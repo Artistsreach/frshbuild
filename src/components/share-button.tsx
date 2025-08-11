@@ -9,6 +9,7 @@ import {
   RocketIcon,
   Loader2Icon,
   GlobeIcon,
+  LockIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -22,18 +23,60 @@ import {
 import { Label } from "@/components/ui/label";
 import { publishApp } from "@/actions/publish-app";
 import { setAppVisibility } from "@/actions/set-app-visibility";
+import { setAppRecreatable } from "@/actions/set-app-recreatable";
+import { setAppSubscription } from "@/actions/set-app-subscription";
 import { useState } from "react";
+import { Switch } from "@/components/ui/switch";
 
 interface ShareButtonProps {
   className?: string;
   domain?: string;
   appId: string;
+  isPublic?: boolean;
+  isRecreatable?: boolean;
+  requiresSubscription?: boolean;
 }
 
-export function ShareButton({ className, domain, appId }: ShareButtonProps) {
+export function ShareButton({
+  className,
+  domain,
+  appId,
+  isPublic = false,
+  isRecreatable = false,
+  requiresSubscription = false,
+}: ShareButtonProps) {
   // The domain may be undefined if no previewDomain exists in the database
   const [isPublishing, setIsPublishing] = useState(false);
-  const [isMakingPublic, setIsMakingPublic] = useState(false);
+  const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
+  const [publicState, setPublicState] = useState(isPublic);
+  const [recreatable, setRecreatable] = useState(isRecreatable);
+  const [requiresSubscriptionState, setRequiresSubscriptionState] = useState(requiresSubscription);
+
+  const handleRecreatableChange = async (checked: boolean) => {
+    setRecreatable(checked);
+    try {
+      await setAppRecreatable({ appId, recreatable: checked });
+      toast.success(
+        `App is now ${checked ? "recreatable" : "not recreatable"}`
+      );
+    } catch (error) {
+      toast.error("Failed to update recreatable status");
+      setRecreatable(!checked);
+    }
+  };
+
+  const handleSubscriptionChange = async (checked: boolean) => {
+    setRequiresSubscriptionState(checked);
+    try {
+      await setAppSubscription(appId, checked);
+      toast.success(
+        `App now ${checked ? "requires a subscription" : "does not require a subscription"}`
+      );
+    } catch (error) {
+      toast.error("Failed to update subscription requirement");
+      setRequiresSubscriptionState(!checked);
+    }
+  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard
@@ -61,16 +104,17 @@ export function ShareButton({ className, domain, appId }: ShareButtonProps) {
     }
   };
 
-  const handleMakePublic = async () => {
+  const handleToggleVisibility = async () => {
     try {
-      setIsMakingPublic(true);
-      await setAppVisibility({ appId, public: true });
-      toast.success("App is now public");
+      setIsUpdatingVisibility(true);
+      await setAppVisibility({ appId, public: !publicState });
+      setPublicState((p) => !p);
+      toast.success(!publicState ? "App is now public" : "App is now private");
     } catch (error) {
       toast.error("Failed to update visibility");
       console.error(error);
     } finally {
-      setIsMakingPublic(false);
+      setIsUpdatingVisibility(false);
     }
   };
 
@@ -131,19 +175,47 @@ export function ShareButton({ className, domain, appId }: ShareButtonProps) {
                   Visit Preview
                 </Button>
 
+                <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5">
+                    <Label>Recreatable</Label>
+                    <DialogDescription>
+                      Allow others to recreate this app.
+                    </DialogDescription>
+                  </div>
+                  <Switch
+                    checked={recreatable}
+                    onCheckedChange={handleRecreatableChange}
+                  />
+                </div>
+                {publicState && (
+                  <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                    <div className="space-y-0.5">
+                      <Label>Require Subscription</Label>
+                      <DialogDescription>
+                        Only subscribed users can access this app.
+                      </DialogDescription>
+                    </div>
+                    <Switch
+                      checked={requiresSubscriptionState}
+                      onCheckedChange={handleSubscriptionChange}
+                    />
+                  </div>
+                )}
                 <Button
                   variant="secondary"
                   size="sm"
                   className="gap-2 w-full"
-                  onClick={handleMakePublic}
-                  disabled={isMakingPublic}
+                  onClick={handleToggleVisibility}
+                  disabled={isUpdatingVisibility}
                 >
-                  {isMakingPublic ? (
+                  {isUpdatingVisibility ? (
                     <Loader2Icon className="h-4 w-4 animate-spin" />
+                  ) : publicState ? (
+                    <LockIcon className="h-4 w-4" />
                   ) : (
                     <GlobeIcon className="h-4 w-4" />
                   )}
-                  Make Public
+                  {publicState ? "Make Private" : "Make Public"}
                 </Button>
 
                 <Button
@@ -168,19 +240,33 @@ export function ShareButton({ className, domain, appId }: ShareButtonProps) {
                 No preview domain available yet. Publish your app to create a
                 preview URL.
               </p>
+              <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm mb-2">
+                <div className="space-y-0.5">
+                  <Label>Recreatable</Label>
+                  <DialogDescription>
+                    Allow others to recreate this app.
+                  </DialogDescription>
+                </div>
+                <Switch
+                  checked={recreatable}
+                  onCheckedChange={handleRecreatableChange}
+                />
+              </div>
               <Button
                 variant="secondary"
                 size="default"
                 className="gap-2 w-full mb-2"
-                onClick={handleMakePublic}
-                disabled={isMakingPublic}
+                onClick={handleToggleVisibility}
+                disabled={isUpdatingVisibility}
               >
-                {isMakingPublic ? (
+                {isUpdatingVisibility ? (
                   <Loader2Icon className="h-4 w-4 animate-spin" />
+                ) : publicState ? (
+                  <LockIcon className="h-4 w-4" />
                 ) : (
                   <GlobeIcon className="h-4 w-4" />
                 )}
-                Make Public
+                {publicState ? "Make Private" : "Make Public"}
               </Button>
               <Button
                 variant="default"

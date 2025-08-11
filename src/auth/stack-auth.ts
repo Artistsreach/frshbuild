@@ -29,5 +29,6 @@ export async function getUser() {
   return {
     userId: user.id,
     freestyleIdentity: user.serverMetadata.freestyleIdentity,
+    stripeAccountId: user.serverMetadata.stripeAccountId as string | undefined,
   };
 }

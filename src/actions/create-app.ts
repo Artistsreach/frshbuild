@@ -52,13 +52,13 @@ export async function createApp({
   });
   console.timeEnd("dev server");
 
-  console.time("database: create app");
   const app = await db.transaction(async (tx) => {
     const appInsertion = await tx
       .insert(appsTable)
       .values({
         gitRepo: repo.repoId,
         name: initialMessage,
+        is_public: false,
       })
       .returning();
 
@@ -76,7 +76,6 @@ export async function createApp({
 
     return appInsertion[0];
   });
-  console.timeEnd("database: create app");
 
   console.time("mastra: create thread");
   await memory.createThread({

@@ -27,7 +27,7 @@ export async function setAppVisibility({
     throw new Error("Not authorized to change app visibility");
   }
 
-  await db.update(appsTable).set({ public: isPublic }).where(eq(appsTable.id, appId));
+  await db.update(appsTable).set({ is_public: isPublic }).where(eq(appsTable.id, appId));
 
   return { success: true } as const;
 }

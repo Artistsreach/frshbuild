@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Adorable",
-  description: "Open Source AI App Builder",
+  title: "FreshFront",
+  description: "AI App Builder and Vibe Coder No Code Platform like Lovable Firebase Studio Base44 Bolt.New",
   manifest: "/manifest.json",
   // viewport: {
   //   width: "device-width",
@@ -37,12 +37,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      {/* <head>
+      <head>
+        {/* html2canvas for thumbnail capture */}
         <script
-          crossOrigin="anonymous"
-          src="//unpkg.com/react-scan/dist/auto.global.js"
+          src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"
+          defer
         />
-      </head> */}
+      </head>
       <body
         className={cn(
           `${geistSans.variable} ${geistMono.variable} antialiased`

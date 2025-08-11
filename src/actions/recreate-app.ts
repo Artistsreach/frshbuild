@@ -48,7 +48,7 @@ export async function recreateApp(sourceAppId: string) {
         description: source.description,
         baseId: source.baseId,
         previewDomain: null,
-        public: false,
+        is_public: false,
       })
       .returning();
 

@@ -6,6 +6,7 @@ import {
   json,
   pgEnum,
   boolean,
+  integer,
 } from "drizzle-orm/pg-core";
 
 import type { UIMessage } from "ai";
@@ -18,7 +19,13 @@ export const appsTable = pgTable("apps", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   baseId: text("base_id").notNull().default("nextjs-dkjfgdf"),
   previewDomain: text("preview_domain").unique(),
-  public: boolean("public").notNull().default(false),
+  is_public: boolean("is_public").notNull().default(false),
+  is_recreatable: boolean("is_recreatable").notNull().default(false),
+  requires_subscription: boolean("requires_subscription").notNull().default(false),
+  stripeProductId: text("stripe_product_id"),
+  stripePriceIds: json("stripe_price_ids").$type<string[]>(),
+  stripeAccountId: text("stripe_account_id"),
+  thumbnail: text("thumbnail"),
 });
 
 export const appPermissions = pgEnum("app_user_permission", [
@@ -37,6 +44,7 @@ export const appUsers = pgTable("app_users", {
   freestyleIdentity: text("freestyle_identity").notNull(),
   freestyleAccessToken: text("freestyle_access_token").notNull(),
   freestyleAccessTokenId: text("freestyle_access_token_id").notNull(),
+  credits: integer("credits").notNull().default(0),
 });
 
 export const messagesTable = pgTable("messages", {

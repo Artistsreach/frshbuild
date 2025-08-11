@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Chat from "./chat";
 import { TopBar } from "./topbar";
-import { MessageCircle, Monitor } from "lucide-react";
+import { MessageCircle, Monitor, ChevronLeft, ChevronRight } from "lucide-react";
 import WebView from "./webview";
 import { UIMessage } from "ai";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -25,6 +25,12 @@ export default function AppWrapper({
   topBarActions,
   showRecreate,
   sourceAppId,
+  isPublic,
+  isOwner,
+  isRecreatable,
+  isCrowdfunded,
+  stripeProductId,
+  requiresSubscription,
 }: {
   appName: string;
   repo: string;
@@ -40,11 +46,18 @@ export default function AppWrapper({
   topBarActions?: React.ReactNode;
   showRecreate?: boolean;
   sourceAppId?: string;
+  isPublic?: boolean;
+  isOwner: boolean;
+  isRecreatable: boolean;
+  isCrowdfunded: boolean;
+  stripeProductId?: string;
+  requiresSubscription?: boolean;
 }) {
   const [mobileActiveTab, setMobileActiveTab] = useState<"chat" | "preview">(
     "chat"
   );
   const [isMobile, setIsMobile] = useState(false);
+  const [sidebarVisible, setSidebarVisible] = useState(!isPublic);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -63,10 +76,14 @@ export default function AppWrapper({
     };
   }, []);
 
+  const toggleSidebar = () => {
+    setSidebarVisible(!sidebarVisible);
+  };
+
   return (
     <div className="h-screen flex flex-col" style={{ height: "100dvh" }}>
       {/* Desktop and Mobile container */}
-      <div className="flex-1 overflow-hidden flex flex-col md:grid md:grid-cols-[1fr_2fr]">
+      <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
         {/* Chat component - positioned for both mobile and desktop */}
         <div
           className={
@@ -76,7 +93,9 @@ export default function AppWrapper({
                     ? "translate-x-0"
                     : "-translate-x-full"
                 }`
-              : "h-full overflow-hidden flex flex-col"
+              : `h-full overflow-hidden flex flex-col transition-all duration-300 ease-in-out ${
+                  sidebarVisible ? "w-96" : "w-0"
+                }`
           }
           style={
             isMobile
@@ -90,25 +109,50 @@ export default function AppWrapper({
           <QueryClientProvider client={queryClient}>
             <Chat
               topBar={
-                <TopBar
-                  appName={appName}
-                  repoId={repoId}
-                  consoleUrl={consoleUrl}
-                  codeServerUrl={codeServerUrl}
-                >
-                  {showRecreate && sourceAppId ? (
-                    <RecreateButton sourceAppId={sourceAppId} />
-                  ) : null}
-                  {topBarActions}
-                </TopBar>
+                sidebarVisible ? (
+                  <TopBar
+                    appName={appName}
+                    repoId={repoId}
+                    isPublic={isPublic}
+                    consoleUrl={consoleUrl}
+                    codeServerUrl={codeServerUrl}
+                    appId={appId}
+                    isRecreatable={isRecreatable}
+                    isCrowdfunded={isCrowdfunded}
+                    domain={domain}
+                    isOwner={isOwner}
+                    stripeProductId={stripeProductId}
+                  >
+                    {topBarActions}
+                  </TopBar>
+                ) : null
               }
               appId={appId}
               initialMessages={initialMessages}
               key={appId}
               running={running}
+              isOwner={isOwner}
             />
           </QueryClientProvider>
         </div>
+
+        {/* Sidebar toggle button - only visible on desktop */}
+        {!isMobile && (
+          <button
+            onClick={toggleSidebar}
+            className="fixed left-0 top-1/2 transform -translate-y-1/2 z-20 bg-background border border-border rounded-r-lg p-2 shadow-lg hover:bg-accent transition-colors"
+            style={{
+              left: sidebarVisible ? "24rem" : "0", // 24rem = w-96
+              transition: "left 300ms ease-in-out"
+            }}
+          >
+            {sidebarVisible ? (
+              <ChevronLeft className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </button>
+        )}
 
         {/* Preview component - positioned for both mobile and desktop */}
         <div
@@ -119,7 +163,7 @@ export default function AppWrapper({
                     ? "translate-x-0"
                     : "translate-x-full"
                 }`
-              : "overflow-auto"
+              : "flex-1 overflow-auto transition-all duration-300 ease-in-out"
           }
           style={
             isMobile
@@ -136,6 +180,10 @@ export default function AppWrapper({
               baseId={baseId}
               appId={appId}
               domain={domain}
+              isPublic={!!isPublic}
+              isRecreatable={!!isRecreatable}
+              isOwner={isOwner}
+              requiresSubscription={!!requiresSubscription}
             />
           </div>
         </div>

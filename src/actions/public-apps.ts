@@ -10,9 +10,11 @@ export async function getPublicApps() {
       id: appsTable.id,
       name: appsTable.name,
       createdAt: appsTable.createdAt,
+      stripeProductId: appsTable.stripeProductId,
+      is_public: appsTable.is_public,
     })
     .from(appsTable)
-    .where(eq(appsTable.public, true))
+    .where(eq(appsTable.is_public, true))
     .orderBy(desc(appsTable.createdAt));
 
   return publicApps.map((a) => ({ ...a, deletable: false }));

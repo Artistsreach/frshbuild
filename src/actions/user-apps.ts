@@ -17,8 +17,9 @@ export async function getUserApps() {
         description: appsTable.description,
         gitRepo: appsTable.gitRepo,
         createdAt: appsTable.createdAt,
-        public: appsTable.public,
+        is_public: appsTable.is_public,
         permissions: appUsers.permissions,
+        stripeProductId: appsTable.stripeProductId,
       })
       .from(appUsers)
       .innerJoin(appsTable, eq(appUsers.appId, appsTable.id))
@@ -34,9 +35,11 @@ export async function getUserApps() {
         id: appsTable.id,
         name: appsTable.name,
         createdAt: appsTable.createdAt,
+        stripeProductId: appsTable.stripeProductId,
+        is_public: appsTable.is_public,
       })
       .from(appsTable)
-      .where(eq(appsTable.public, true))
+      .where(eq(appsTable.is_public, true))
       .orderBy(desc(appsTable.createdAt));
 
     return publicApps.map((a) => ({ ...a, deletable: false }));

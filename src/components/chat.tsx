@@ -20,6 +20,7 @@ export default function Chat(props: {
   isLoading?: boolean;
   topBar?: React.ReactNode;
   running: boolean;
+  isOwner: boolean;
 }) {
   const { data: chat } = useQuery({
     queryKey: ["stream", props.appId],
@@ -117,7 +118,7 @@ export default function Chat(props: {
         </ChatContainer>
       </div>
       <div className="flex-shrink-0 p-3 transition-all bg-background md:backdrop-blur-sm">
-        {props.isLoading || chat?.state === "running" ? null : (
+        {props.isOwner && !(props.isLoading || chat?.state === "running") ? (
           <div className="flex justify-center">
             <Button
               onClick={() =>
@@ -142,7 +143,7 @@ export default function Chat(props: {
               Continue
             </Button>
           </div>
-        )}
+        ) : null}
         <PromptInputBasic
           stop={handleStop}
           input={input}
@@ -152,6 +153,7 @@ export default function Chat(props: {
           onSubmit={onSubmit}
           onSubmitWithImages={onSubmitWithImages}
           isGenerating={props.isLoading || chat?.state === "running"}
+          disabled={!props.isOwner}
         />
       </div>
     </div>

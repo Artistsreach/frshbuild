@@ -10,7 +10,11 @@ const nextConfig: NextConfig = {
   },
   devIndicators: false,
   images: {
-    domains: ["static.wixstatic.com"],
+    domains: ["static.wixstatic.com", "upload.wikimedia.org"],
+  },
+  env: {
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
   },
 };
 

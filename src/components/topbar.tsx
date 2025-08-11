@@ -1,13 +1,13 @@
-import {
-  ArrowUpRightIcon,
-  ComputerIcon,
-  GlobeIcon,
-  HomeIcon,
-  TerminalIcon,
-} from "lucide-react";
+"use client";
+
+import { ArrowUpRightIcon, ComputerIcon, GlobeIcon, TerminalIcon, CoinsIcon } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import React, { useState } from "react";
 import { Button } from "./ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { getUserCredits } from "@/actions/get-user-credits";
+import { getUser } from "@/actions/get-user";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "./ui/dialog";
-import { ModeToggle } from "./theme-toggle";
+import { CrowdfundModal } from "./crowdfund-modal";
+import { ShareButton } from "./share-button";
+import { TierSelectionModal } from "./tier-selection-modal";
+import { PurchaseModal } from "./purchase-modal";
 
 export function TopBar({
   appName,
@@ -23,132 +26,151 @@ export function TopBar({
   repoId,
   consoleUrl,
   codeServerUrl,
+  isPublic,
+  appId,
+  isRecreatable,
+  domain,
+  isCrowdfunded,
+  isOwner,
+  stripeProductId,
 }: {
   appName: string;
   children?: React.ReactNode;
   repoId: string;
   consoleUrl: string;
   codeServerUrl: string;
+  isPublic?: boolean;
+  appId: string;
+  isRecreatable: boolean;
+  domain?: string;
+  isCrowdfunded: boolean;
+  isOwner: boolean;
+  stripeProductId?: string;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [tierModalOpen, setTierModalOpen] = useState(false);
+  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
+
+  const { data: credits } = useQuery({
+    queryKey: ["credits"],
+    queryFn: () => getUserCredits(),
+    refetchInterval: 5000,
+  });
+
+  const { data: user } = useQuery({
+    queryKey: ["user"],
+    queryFn: () => getUser(),
+  });
 
   return (
-    <div className="h-12 sticky top-0 flex items-center px-4 border-b border-gray-200 bg-background justify-between">
+    <div className="h-12 sticky top-0 flex items-center px-4 border-b border-gray-200 dark:border-black bg-background justify-between">
       <div className="flex items-center gap-4">
         <Link href={"/"}>
-          <HomeIcon className="h-5 w-5" />
+          <Image
+            src="https://static.wixstatic.com/media/bd2e29_695f70787cc24db4891e63da7e7529b3~mv2.png"
+            alt="Adorable Logo"
+            width={24}
+            height={24}
+            className="dark:invert h-6 w-6"
+            priority
+          />
         </Link>
-        <ModeToggle />
       </div>
       <div className="flex items-center gap-2">
-        {children}
-      </div>
-
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogTrigger asChild>
-          <Button size="sm" variant={"ghost"}>
-            <img
-              src="/logos/vscode.svg"
-              className="h-4 w-4"
-              alt="VS Code Logo"
-            />
-            {/* <img
-              src="/logos/cursor.png"
-              className="h-4 w-4"
-              alt="Cursor Logo"
-            /> */}
-            <TerminalIcon className="h-4 w-4" />
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Open In</DialogTitle>
-          </DialogHeader>
-          <div>
-            <div className="flex flex-col gap-2 pb-4">
-              <div className="font-bold mt-4 flex items-center gap-2">
-                <GlobeIcon className="inline h-4 w-4 ml-1" />
-                Browser
-              </div>
-              <div>
-                <a href={codeServerUrl} target="_blank" className="w-full">
-                  <Button
-                    variant="outline"
-                    className="w-full flex justify-between items-center"
-                  >
-                    <div className="flex items-center gap-2">
-                      <img
-                        src="/logos/vscode.svg"
-                        className="h-4 w-4"
-                        alt="VS Code Logo"
-                      />
-                      <span>VS Code</span>
-                    </div>
-                    <ArrowUpRightIcon className="h-4 w-4" />
-                  </Button>
-                </a>
-              </div>
-              <div>
-                <a href={consoleUrl} target="_blank" className="w-full">
-                  <Button
-                    variant="outline"
-                    className="w-full flex justify-between items-center"
-                  >
-                    <div className="flex items-center gap-2">
-                      <TerminalIcon className="h-4 w-4" />
-                      <span>Console</span>
-                    </div>
-                    <ArrowUpRightIcon className="h-4 w-4" />
-                  </Button>
-                </a>
-              </div>
-
-              {/* <div className="font-bold mt-4 flex items-center gap-2">
-                <ComputerIcon className="inline h-4 w-4 ml-1" />
-                Local
-              </div>
-
-              <div>
-                <Button
-                  variant="outline"
-                  className="w-full flex justify-between items-center"
-                  onClick={() => {
-                    navigator.clipboard.writeText();
-                    setModalOpen(false);
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <img
-                      src="/logos/vscode.svg"
-                      className="h-4 w-4"
-                      alt="VS Code Logo"
-                    />
-                    <span>VS Code Remote</span>
-                  </div>
-                  <span>Copy Command</span>
-                </Button>
-              </div>
-
-              <div>
-                <Button
-                  variant="outline"
-                  className="w-full flex justify-between items-center"
-                  onClick={() => {
-                    navigator.clipboard.writeText(`ssh ${}@vm-ssh`);
-                    setModalOpen(false);
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <TerminalIcon className="h-4 w-4" />
-                    <span>SSH</span>
-                  </div>
-                  <span>Copy Command</span>
-                </Button>
-              </div> */}
+        {isOwner && (
+          <>
+            <div
+              className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 cursor-pointer"
+              onClick={() => setPurchaseModalOpen(true)}
+            >
+              <CoinsIcon className="h-4 w-4 dark:text-yellow-400" />
+              {credits}
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+            <PurchaseModal
+              open={purchaseModalOpen}
+              onOpenChange={setPurchaseModalOpen}
+              userId={user?.id ?? ""}
+            />
+          </>
+        )}
+        {children}
+        {isPublic && !isCrowdfunded && (
+          <CrowdfundModal appName={appName} appId={appId} />
+        )}
+        {/* Subscribe button logic, similar to AppCard */}
+        {stripeProductId && isPublic && !isOwner && (
+          <>
+            <Button size="sm" onClick={() => setTierModalOpen(true)}>
+              Subscribe
+            </Button>
+            <TierSelectionModal
+              appName={appName}
+              productId={stripeProductId}
+              open={tierModalOpen}
+              onOpenChange={setTierModalOpen}
+            />
+          </>
+        )}
+        {isOwner && (
+          <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant={"ghost"}>
+                <img
+                  src="/logos/vscode.svg"
+                  className="h-4 w-4"
+                  alt="VS Code Logo"
+                />
+                <TerminalIcon className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Open In</DialogTitle>
+              </DialogHeader>
+              <div>
+                <div className="flex flex-col gap-2 pb-4">
+                  <div className="font-bold mt-4 flex items-center gap-2">
+                    <GlobeIcon className="inline h-4 w-4 ml-1" />
+                    Browser
+                  </div>
+                  <div>
+                    <a href={codeServerUrl} target="_blank" className="w-full">
+                      <Button
+                        variant="outline"
+                        className="w-full flex justify-between items-center"
+                      >
+                        <div className="flex items-center gap-2">
+                          <img
+                            src="/logos/vscode.svg"
+                            className="h-4 w-4"
+                            alt="VS Code Logo"
+                          />
+                          <span>VS Code</span>
+                        </div>
+                        <ArrowUpRightIcon className="h-4 w-4" />
+                      </Button>
+                    </a>
+                  </div>
+                  <div>
+                    <a href={consoleUrl} target="_blank" className="w-full">
+                      <Button
+                        variant="outline"
+                        className="w-full flex justify-between items-center"
+                      >
+                        <div className="flex items-center gap-2">
+                          <TerminalIcon className="h-4 w-4" />
+                          <span>Console</span>
+                        </div>
+                        <ArrowUpRightIcon className="h-4 w-4" />
+                      </Button>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
     </div>
   );
 }

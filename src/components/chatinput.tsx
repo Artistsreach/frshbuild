@@ -8,7 +8,7 @@ import {
   PromptInputTextarea,
 } from "@/components/ui/prompt-input";
 import { Button } from "@/components/ui/button";
-import { ArrowUp, SquareIcon, Paperclip, X } from "lucide-react";
+import { Sparkles, SquareIcon, Paperclip, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { compressImage, CompressedImage } from "@/lib/image-compression";
 
@@ -35,6 +35,7 @@ export function PromptInputBasic({
   const [images, setImages] = useState<CompressedImage[]>([]);
   const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
     setIsLoading(isGenerating);
@@ -83,7 +84,7 @@ export function PromptInputBasic({
   };
 
   return (
-    <div className="relative w-full">
+    <div className={`relative w-full rounded-lg${isFocused ? ' shimmer-border pulse-glow' : ''}`}>
       {/* Image previews */}
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -115,19 +116,23 @@ export function PromptInputBasic({
         onValueChange={(value) => onValueChange?.(value)}
         isLoading={isLoading || isCompressing}
         onSubmit={handleSubmitWithData}
-        className="w-full border dark:bg-accent shadow-sm rounded-lg border-gray-300focus-within:border-gray-400 focus-within:ring-1 transition-all duration-200 ease-in-out focus-within:ring-gray-200 border-gray-300"
+        className="w-full border dark:bg-accent shadow-sm rounded-lg border-gray-300 focus-within:border-gray-400 focus-within:ring-1 transition-all duration-200 ease-in-out focus-within:ring-gray-200"
       >
-        <PromptInputTextarea
-          placeholder={
-            isGenerating
-              ? "Adorable is working..."
-              : isCompressing
-                ? "Compressing images..."
-                : "Type your message here..."
-          }
-          className="pr-20 bg-transparent dark:bg-transparent"
-          disabled={disabled}
-        />
+        <div id="app-chat-field">
+          <PromptInputTextarea
+            placeholder={
+              isGenerating
+                ? "FreshFront is working..."
+                : isCompressing
+                  ? "Compressing images..."
+                  : "Type your message here..."
+            }
+            className="pr-20 bg-transparent dark:bg-transparent min-h-[50px] max-h-[50px] h-[50px] border-none" // remove border
+            disabled={disabled}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+          />
+        </div>
       </PromptInput>
 
       <input
@@ -160,19 +165,23 @@ export function PromptInputBasic({
             <SquareIcon className="h-4 w-4" />
           </Button>
         ) : (
-          <Button
-            variant={"default"}
-            size="icon"
-            className="h-8 w-8 rounded-full"
-            disabled={
-              isGenerating ||
-              disabled ||
-              (input.trim() === "" && images.length === 0)
-            }
-            onClick={handleSubmitWithData}
-          >
-            <ArrowUp className="h-4 w-4" />
-          </Button>
+          <div id="app-chat-submit">
+            <Button
+              variant={"default"}
+              size="icon"
+              className="h-8 w-8 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-md shadow-blue-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={
+                isGenerating ||
+                disabled ||
+                (input.trim() === "" && images.length === 0)
+              }
+              onClick={handleSubmitWithData}
+              aria-label="Send"
+              title="Send"
+            >
+              <Sparkles className="h-4 w-4" />
+            </Button>
+          </div>
         )}
       </div>
     </div>

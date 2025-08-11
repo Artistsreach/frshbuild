@@ -13,6 +13,10 @@ EventEmitter.defaultMaxListeners = 1000;
 import { NextRequest } from "next/server";
 import { redisPublisher } from "@/lib/redis";
 import { MessageList } from "@mastra/core/agent";
+import { stackServerApp } from "@/auth/stack-auth";
+import { db } from "@/lib/db";
+import { appUsers } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 
 export async function POST(req: NextRequest) {
   console.log("creating new chat stream");
@@ -26,6 +30,27 @@ export async function POST(req: NextRequest) {
   if (!app) {
     return new Response("App not found", { status: 404 });
   }
+
+  const user = await stackServerApp.getUser();
+  if (!user) {
+    return new Response("User not found", { status: 401 });
+  }
+  let credits = user.serverMetadata?.credits as number | undefined;
+
+  if (credits === undefined) {
+    credits = 100;
+  }
+
+  if (credits < 15) {
+    return new Response("Not enough credits", { status: 402 });
+  }
+
+  await user.update({
+    serverMetadata: {
+      ...user.serverMetadata,
+      credits: credits - 15,
+    },
+  });
 
   const streamState = await redisPublisher.get(
     "app:" + appId + ":stream-state"
@@ -90,24 +115,6 @@ export async function sendMessage(
 
   const toolsets = await mcp.getToolsets();
 
-  const memory = await builderAgent.getMemory();
-  await memory?.saveMessages({
-    messages: [
-      {
-        content: {
-          parts: message.parts,
-          format: 3,
-        },
-        role: "user",
-        createdAt: new Date(),
-        id: message.id,
-        threadId: appId,
-        type: "text",
-        resourceId: appId,
-      },
-    ],
-  });
-
   const controller = new AbortController();
   let shouldAbort = false;
   await getAbortCallback(appId, () => {
@@ -121,7 +128,7 @@ export async function sendMessage(
     threadId: appId,
   });
 
-  const stream = await builderAgent.stream([], {
+  const stream = await builderAgent.stream([message], {
     memory: {
       thread: { id: appId },
       resource: appId,

@@ -39,13 +39,14 @@ export function UserApps() {
   }, [loggedIn, view, publicApps, userApps]);
 
   return (
-    <div className="px-4 sm:px-8">
+    <div className="px-4 sm:px-8 flex-grow">
       {loggedIn && (
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center justify-center mb-4">
           <Button
             size="sm"
             variant={view === "user" ? "default" : "outline"}
             onClick={() => setView("user")}
+            className="rounded-r-none"
           >
             Your Apps
           </Button>
@@ -53,23 +54,28 @@ export function UserApps() {
             size="sm"
             variant={view === "public" ? "default" : "outline"}
             onClick={() => setView("public")}
+            className="rounded-l-none"
           >
             Community
           </Button>
         </div>
       )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {items.map((app: any) => (
-          <AppCard
-            key={app.id}
+      <div className="bg-zinc-100 dark:bg-[#141414] rounded-t-2xl p-4 py-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-[-15px]">
+          {items.map((app: any) => (
+            <AppCard
+              key={app.id}
             id={app.id}
             name={app.name}
             createdAt={app.createdAt}
             deletable={app.deletable}
-            public={app.public}
+            public={app.is_public}
             onDelete={onAppDeleted}
+            stripeProductId={app.stripeProductId}
+            source={view === "user" ? "user" : "community"}
           />
         ))}
+        </div>
       </div>
     </div>
   );
