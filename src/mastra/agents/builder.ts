@@ -2,6 +2,9 @@ import { SYSTEM_MESSAGE } from "@/lib/system";
 import { openai } from "@ai-sdk/openai";
 import { Agent } from "@mastra/core/agent";
 import { createTool } from "@mastra/core/tools";
+import { scrapeTool, extractTool, checkExtractStatusTool, crawlTool, checkCrawlStatusTool, searchTool } from "../tools/firecrawl";
+import { easBuildTool, easConfigureTool, easBuildListTool, easSubmitTool } from "../tools/expo";
+import { cloneRepoTool } from "../tools/git";
 import { Memory } from "@mastra/memory";
 import { PostgresStore, PgVector } from "@mastra/pg";
 import { z } from "zod";
@@ -34,6 +37,17 @@ export const builderAgent = new Agent({
   instructions: SYSTEM_MESSAGE,
   memory,
   tools: {
+    scrape: scrapeTool,
+    extract: extractTool,
+    checkExtractStatus: checkExtractStatusTool,
+    crawl: crawlTool,
+    checkCrawlStatus: checkCrawlStatusTool,
+    search: searchTool,
+    easConfigure: easConfigureTool,
+    easBuild: easBuildTool,
+    easBuildList: easBuildListTool,
+    easSubmit: easSubmitTool,
+    cloneFreestyleRepo: cloneRepoTool,
     update_todo_list: createTool({
       id: "update_todo_list",
       description:
