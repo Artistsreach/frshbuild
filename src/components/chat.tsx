@@ -6,6 +6,9 @@ import { PromptInputBasic } from "./chatinput";
 import { Markdown } from "./ui/markdown";
 import { useState } from "react";
 import { Button } from "./ui/button";
+import { PurchaseModal } from "./purchase-modal";
+import { getUserCredits } from "@/actions/get-user-credits";
+import { getUser } from "@/actions/get-user";
 import { ChatContainer } from "./ui/chat-container";
 import { UIMessage } from "ai";
 import { ToolMessage } from "./tools";
@@ -22,6 +25,19 @@ export default function Chat(props: {
   running: boolean;
   isOwner: boolean;
 }) {
+  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
+
+  const { data: credits } = useQuery({
+    queryKey: ["credits"],
+    queryFn: () => getUserCredits(),
+    refetchInterval: 5000,
+  });
+
+  const { data: user } = useQuery({
+    queryKey: ["user"],
+    queryFn: () => getUser(),
+  });
+
   const { data: chat } = useQuery({
     queryKey: ["stream", props.appId],
     queryFn: async () => {
@@ -31,7 +47,7 @@ export default function Chat(props: {
     refetchOnWindowFocus: true,
   });
 
-  const { messages, sendMessage } = useChatSafe({
+  const { messages, sendMessage, setMessages } = useChatSafe({
     messages: props.initialMessages,
     id: props.appId,
     resume: props.running && chat?.state === "running",
@@ -43,6 +59,20 @@ export default function Chat(props: {
     if (e?.preventDefault) {
       e.preventDefault();
     }
+
+    if (credits !== undefined && credits < 15) {
+      setMessages([
+        ...messages,
+        {
+          id: `low-credits-${Date.now()}`,
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'INSUFFICIENT_CREDITS' }]
+        }
+      ]);
+      setInput("");
+      return;
+    }
+
     sendMessage(
       {
         parts: [
@@ -62,6 +92,19 @@ export default function Chat(props: {
   };
 
   const onSubmitWithImages = (text: string, images: CompressedImage[]) => {
+    if (credits !== undefined && credits < 15) {
+      setMessages([
+        ...messages,
+        {
+          id: `low-credits-${Date.now()}`,
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'INSUFFICIENT_CREDITS' }]
+        }
+      ]);
+      setInput("");
+      return;
+    }
+
     const parts: Parameters<typeof sendMessage>[0]["parts"] = [];
 
     if (text.trim()) {
@@ -113,11 +156,20 @@ export default function Chat(props: {
       >
         <ChatContainer autoScroll>
           {messages.map((message: any, idx: number) => (
-            <MessageBody key={message.id ? `${message.id}-${idx}` : `msg-${idx}`} message={message} />
+            <MessageBody
+              key={message.id ? `${message.id}-${idx}` : `msg-${idx}`}
+              message={message}
+              onPurchaseClick={() => setPurchaseModalOpen(true)}
+            />
           ))}
         </ChatContainer>
       </div>
       <div className="flex-shrink-0 p-3 transition-all bg-background md:backdrop-blur-sm">
+        <PurchaseModal
+          open={purchaseModalOpen}
+          onOpenChange={setPurchaseModalOpen}
+          userId={user?.id ?? ""}
+        />
         {props.isOwner && !(props.isLoading || chat?.state === "running") ? (
           <div className="flex justify-center">
             <Button
@@ -160,7 +212,21 @@ export default function Chat(props: {
   );
 }
 
-function MessageBody({ message }: { message: any }) {
+function MessageBody({ message, onPurchaseClick }: { message: any, onPurchaseClick: () => void }) {
+  if (message.parts && message.parts[0]?.text === 'INSUFFICIENT_CREDITS') {
+    return (
+      <div className="mb-4">
+        <div className="bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 text-yellow-700 dark:text-yellow-300 px-4 py-3 rounded-lg relative" role="alert">
+          <strong className="font-bold">Low Credits!</strong>
+          <span className="block sm:inline"> You have less than 15 credits. Please purchase more to continue the conversation.</span>
+          <div className="mt-2">
+            <Button onClick={onPurchaseClick}>Buy Credits</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (message.role === "user") {
     return (
       <div className="flex justify-end py-1 mb-4">
