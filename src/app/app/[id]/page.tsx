@@ -123,7 +123,6 @@ export default async function AppPage({
 
   return (
     <AppWrapper
-      key={app.info.id}
       baseId={app.info.baseId}
       codeServerUrl={codeServerUrl}
       appName={app.info.name}
