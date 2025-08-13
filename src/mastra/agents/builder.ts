@@ -69,7 +69,7 @@ export const builderAgent = new Agent({
             status: "pending",
           });
         }
-        // In a real application, you would save the todo list to a database here.
+        // In a real application, you would save the to-do list to a database here.
         // For this example, we'll just log it to the console.
         console.log("Updating todo list...");
         if (writer) {

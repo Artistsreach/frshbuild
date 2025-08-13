@@ -69,7 +69,7 @@ const easBuildInputSchema = z.object({
 
 export const easBuildTool = createTool({
   id: "eas_build",
-  description: "Starts a new build for an Expo application using EAS. Streams logs in real-time.",
+  description: "Starts a new build for an Expo application using EAS. Streams logs in realtime.",
   inputSchema: easBuildInputSchema,
   outputSchema: z.object({
     success: z.boolean(),
