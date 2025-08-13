@@ -36,10 +36,10 @@ const scrapeInputSchema = z.object({
 
 export const scrapeTool = createTool({
   id: "firecrawl_scrape",
-  description: "Scrape a URL and return the content in various formats like markdown, HTML, and a screenshot.",
+  description: "Use to scrape a single web page. Returns markdown, HTML, raw HTML, links, screenshots, metadata, and supports actions. Call when the user asks to scrape a URL or when you need page content.",
   inputSchema: scrapeInputSchema,
   outputSchema: z.any(),
-  execute: async (executionContext) => {
+  execute: async (executionContext: StreamingToolExecutionContext<typeof scrapeInputSchema>) => {
     const { context, writer } = executionContext as StreamingToolExecutionContext<typeof scrapeInputSchema>;
     if (writer) {
       writer.write({ type: 'notification', status: 'pending', message: `Scraping ${context.url}...` });
@@ -87,10 +87,10 @@ const extractInputSchema = z.object({
 
 export const extractTool = createTool({
   id: "firecrawl_extract",
-  description: "Extract structured data from multiple URLs based on a provided schema and prompt.",
+  description: "Use to extract structured data (JSON) from one or more URLs. Accepts a schema or a prompt. Call when the user asks to extract specific fields from pages.",
   inputSchema: extractInputSchema,
   outputSchema: z.any(),
-  execute: async (executionContext) => {
+  execute: async (executionContext: StreamingToolExecutionContext<typeof extractInputSchema>) => {
     const { context, writer } = executionContext as StreamingToolExecutionContext<typeof extractInputSchema>;
     if (writer) {
       writer.write({ type: 'notification', status: 'pending', message: `Extracting data from ${context.urls.length} URL(s)...` });
@@ -145,7 +145,7 @@ export const checkExtractStatusTool = createTool({
   description: "Check the status of an extraction job.",
   inputSchema: checkExtractStatusInputSchema,
   outputSchema: z.any(),
-  execute: async (executionContext) => {
+  execute: async (executionContext: StreamingToolExecutionContext<typeof checkExtractStatusInputSchema>) => {
     const { context: { jobId }, writer } = executionContext as StreamingToolExecutionContext<typeof checkExtractStatusInputSchema>;
     if (writer) {
       writer.write({ type: 'notification', status: 'pending', message: `Checking status for job ${jobId}...` });
@@ -187,10 +187,10 @@ const crawlInputSchema = z.object({
 
 export const crawlTool = createTool({
     id: "firecrawl_crawl",
-    description: "Crawl a URL and all accessible subpages.",
+    description: "Use to crawl a site and scrape many pages. Submits a crawl job and returns a job ID. Call when the user wants an entire site or section.",
     inputSchema: crawlInputSchema,
     outputSchema: z.any(),
-    execute: async (executionContext) => {
+    execute: async (executionContext: StreamingToolExecutionContext<typeof crawlInputSchema>) => {
         const { context, writer } = executionContext as StreamingToolExecutionContext<typeof crawlInputSchema>;
         if (writer) {
           writer.write({ type: 'notification', status: 'pending', message: `Starting crawl for ${context.url}...` });
@@ -228,10 +228,10 @@ const checkCrawlStatusInputSchema = z.object({
 
 export const checkCrawlStatusTool = createTool({
     id: "firecrawl_check_crawl_status",
-    description: "Check the status of a crawl job.",
+    description: "Check the status/result of a Firecrawl crawl job by ID. Use after starting a crawl.",
     inputSchema: checkCrawlStatusInputSchema,
     outputSchema: z.any(),
-    execute: async (executionContext) => {
+    execute: async (executionContext: StreamingToolExecutionContext<typeof checkCrawlStatusInputSchema>) => {
         const { context: { jobId }, writer } = executionContext as StreamingToolExecutionContext<typeof checkCrawlStatusInputSchema>;
         if (writer) {
           writer.write({ type: 'notification', status: 'pending', message: `Checking status for crawl job ${jobId}...` });
@@ -271,10 +271,10 @@ const searchInputSchema = z.object({
 
 export const searchTool = createTool({
     id: "firecrawl_search",
-    description: "Search the web and optionally scrape the results.",
+    description: "Use to search the web and optionally scrape results. Call whenever the user asks you to research, find sources, or browse.",
     inputSchema: searchInputSchema,
     outputSchema: z.any(),
-    execute: async (executionContext) => {
+    execute: async (executionContext: StreamingToolExecutionContext<typeof searchInputSchema>) => {
         const { context, writer } = executionContext as StreamingToolExecutionContext<typeof searchInputSchema>;
         if (writer) {
           writer.write({ type: 'notification', status: 'pending', message: `Searching for "${context.query}"...` });
@@ -303,4 +303,50 @@ export const searchTool = createTool({
         }
         return response.json();
     },
+});
+
+// Map: get all URLs of a website quickly (no scraping content)
+const mapInputSchema = z.object({
+  url: z.string(),
+  // Filter to only include URLs relevant to this search term (per docs)
+  search: z.string().optional(),
+});
+
+export const mapTool = createTool({
+  id: "firecrawl_map",
+  description: "Use to quickly get a list of URLs from a site without scraping content. Supports a 'search' filter to return only relevant URLs.",
+  inputSchema: mapInputSchema,
+  outputSchema: z.any(),
+  execute: async (executionContext: StreamingToolExecutionContext<typeof mapInputSchema>) => {
+    const { context, writer } = executionContext as StreamingToolExecutionContext<typeof mapInputSchema>;
+    if (writer) {
+      writer.write({ type: 'notification', status: 'pending', message: `Mapping URLs from ${context.url}...` });
+    }
+
+    if (!firecrawlApiKey) {
+      throw new Error("Firecrawl API key not found.");
+    }
+
+    const response = await fetch("https://api.firecrawl.dev/v1/map", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${firecrawlApiKey}`,
+      },
+      body: JSON.stringify(context),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      if (writer) {
+        writer.write({ type: 'notification', status: 'error', message: `Map failed: ${error.error}` });
+      }
+      throw new Error(`Firecrawl API error: ${error.error}`);
+    }
+
+    if (writer) {
+      writer.write({ type: 'notification', status: 'success', message: `Map completed for ${context.url}.` });
+    }
+    return response.json();
+  },
 });

@@ -1,8 +1,8 @@
 import { SYSTEM_MESSAGE } from "@/lib/system";
 import { openai } from "@ai-sdk/openai";
 import { Agent } from "@mastra/core/agent";
-import { createTool } from "@mastra/core/tools";
-import { scrapeTool, extractTool, checkExtractStatusTool, crawlTool, checkCrawlStatusTool, searchTool } from "../tools/firecrawl";
+import { createTool, ToolExecutionContext } from "@mastra/core/tools";
+import { scrapeTool, extractTool, checkExtractStatusTool, crawlTool, checkCrawlStatusTool, searchTool, mapTool } from "../tools/firecrawl";
 import { easLoginTool, easBuildTool, easSubmitTool } from "../tools/expo";
 import { cloneRepoTool } from "../tools/git";
 import { createProjectTool } from "../tools/supabase";
@@ -44,6 +44,7 @@ export const builderAgent = new Agent({
     crawl: crawlTool,
     checkCrawlStatus: checkCrawlStatusTool,
     search: searchTool,
+    map: mapTool,
     easLogin: easLoginTool,
     easBuild: easBuildTool,
     easSubmit: easSubmitTool,
@@ -64,7 +65,7 @@ export const builderAgent = new Agent({
       outputSchema: z.object({
         success: z.boolean(),
       }),
-      execute: async ({ writer }) => {
+      execute: async ({ writer }: { writer?: { write: (chunk: any) => void } }) => {
         if (writer) {
           writer.write({
             type: "update-todo-list",

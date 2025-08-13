@@ -19,6 +19,7 @@ import { CrowdfundModal } from "./crowdfund-modal";
 import { ShareButton } from "./share-button";
 import { TierSelectionModal } from "./tier-selection-modal";
 import { PurchaseModal } from "./purchase-modal";
+import { SupabaseConnectModal } from "./supabase-connect-modal";
 
 export function TopBar({
   appName,
@@ -50,6 +51,7 @@ export function TopBar({
   const [modalOpen, setModalOpen] = useState(false);
   const [tierModalOpen, setTierModalOpen] = useState(false);
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
+  const [supabaseModalOpen, setSupabaseModalOpen] = useState(false);
 
   const { data: credits } = useQuery({
     queryKey: ["credits"],
@@ -108,6 +110,17 @@ export function TopBar({
               productId={stripeProductId}
               open={tierModalOpen}
               onOpenChange={setTierModalOpen}
+            />
+          </>
+        )}
+        {isOwner && (
+          <>
+            <Button size="sm" variant="outline" onClick={() => setSupabaseModalOpen(true)}>
+              Connect Supabase
+            </Button>
+            <SupabaseConnectModal
+              open={supabaseModalOpen}
+              onOpenChange={setSupabaseModalOpen}
             />
           </>
         )}
