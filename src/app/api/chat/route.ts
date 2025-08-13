@@ -163,10 +163,6 @@ export async function sendMessage(
       await mcp.disconnect();
       await redisPublisher.del(`app:${appId}:stream-state`);
       console.error("Error:", error);
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
     },
     onFinish: async () => {
       await redisPublisher.del(`app:${appId}:stream-state`);
