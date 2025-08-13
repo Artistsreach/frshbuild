@@ -113,7 +113,7 @@ export default function Chat(props: {
       >
         <ChatContainer autoScroll>
           {messages.map((message: any, idx: number) => (
-            <MessageBody key={`${message.id ?? "msg"}-${idx}`} message={message} />
+            <MessageBody key={message.id ? `${message.id}-${idx}` : `msg-${idx}`} message={message} />
           ))}
         </ChatContainer>
       </div>
