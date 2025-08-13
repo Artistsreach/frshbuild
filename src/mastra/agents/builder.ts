@@ -4,7 +4,6 @@ import { Agent } from "@mastra/core/agent";
 import { createTool } from "@mastra/core/tools";
 import {
   scrapeTool,
-  extractTool,
   searchTool,
 } from "../tools/firecrawl";
 import { easLoginTool, easBuildTool, easSubmitTool } from "../tools/expo";
@@ -43,7 +42,6 @@ export const builderAgent = new Agent({
   memory,
   tools: {
     scrape: scrapeTool,
-    extract: extractTool,
     search: searchTool,
     easLogin: easLoginTool,
     easBuild: easBuildTool,
