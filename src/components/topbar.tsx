@@ -19,6 +19,7 @@ import { CrowdfundModal } from "./crowdfund-modal";
 import { ShareButton } from "./share-button";
 import { TierSelectionModal } from "./tier-selection-modal";
 import { PurchaseModal } from "./purchase-modal";
+import { SupabaseModal } from "./supabase-modal";
 
 export function TopBar({
   appName,
@@ -50,6 +51,7 @@ export function TopBar({
   const [modalOpen, setModalOpen] = useState(false);
   const [tierModalOpen, setTierModalOpen] = useState(false);
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
+  const [supabaseModalOpen, setSupabaseModalOpen] = useState(false);
 
   const { data: credits } = useQuery({
     queryKey: ["credits"],
@@ -77,6 +79,17 @@ export function TopBar({
         </Link>
       </div>
       <div className="flex items-center gap-2">
+        <Button size="sm" variant={"ghost"} onClick={() => setSupabaseModalOpen(true)}>
+          <img
+            src="https://inrveiaulksfmzsbyzqj.supabase.co/storage/v1/object/public/images/IMG_7042.png"
+            className="h-4 w-4"
+            alt="Supabase Logo"
+          />
+        </Button>
+        <SupabaseModal
+          open={supabaseModalOpen}
+          onOpenChange={setSupabaseModalOpen}
+        />
         {isOwner && (
           <>
             <div
