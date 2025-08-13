@@ -18,6 +18,7 @@ type TierSelectionModalProps = {
   productId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  appId: string;
 };
 
 export function TierSelectionModal({
@@ -25,6 +26,7 @@ export function TierSelectionModal({
   productId,
   open,
   onOpenChange,
+  appId,
 }: TierSelectionModalProps) {
   const [prices, setPrices] = useState<Stripe.Price[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,7 +43,7 @@ export function TierSelectionModal({
   }, [productId, open]);
 
   const handleSubscribe = async (priceId: string) => {
-    const { sessionId } = await createCheckoutSession(priceId);
+    const { sessionId } = await createCheckoutSession(priceId, appId);
     const stripe = await loadStripe(
       process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
     );

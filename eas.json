@@ -6,19 +6,41 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "credentialsSource": "remote"
+      "credentialsSource": "remote",
+      "ios": {
+        "resourceClass": "m-large",
+        "distribution": "app-store",
+        "image": "latest"
+      }
     }
   },
   "submit": {
     "production": {
-      "credentialsSource": "remote"
+      "ios": {
+        "appleId": "$APPLE_ID",
+        "ascAppId": "$APP_STORE_CONNECT_APP_ID",
+        "appleTeamId": "$APPLE_TEAM_ID",
+        "sku": "$APP_SKU",
+        "language": "en-US",
+        "companyName": "Your Company Name",
+        "appName": "Your App Name",
+        "ascApiKeyPath": "auth-key.p8",
+        "ascApiKeyIssuerId": "$APP_STORE_CONNECT_ISSUER_ID",
+        "ascApiKeyId": "$APP_STORE_CONNECT_KEY_IDENTIFIER"
+      }
     }
   }
 }

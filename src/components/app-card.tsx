@@ -132,6 +132,7 @@ export function AppCard({
           productId={stripeProductId}
           open={isTierModalOpen}
           onOpenChange={setIsTierModalOpen}
+          appId={id}
         />
       )}
 

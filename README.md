@@ -1,15 +1,193 @@
-# Adorable
+# FreshChef
 
-Open-source version of **Lovable** - an AI agent that can make websites and apps through a chat interface.
+Your personal cooking assistant that helps you discover and create delicious recipes based on your preferences and available ingredients.
 
 ## Features
 
-- Chat interface for interacting with AI code assistants
-- Patch-based code editing with user approval
-- Git integration for version control
-- Preview capabilities for code changes
+- AI-powered recipe recommendations
+- Personalized meal planning
+- Shopping list generation
+- Step-by-step cooking instructions
+- Save and organize favorite recipes
+- Cross-platform mobile app (iOS & Android)
 
-## Setup Instructions
+## Deployment to App Stores
+
+### Prerequisites
+
+1. **Apple Developer Account**
+   - Enroll in the [Apple Developer Program](https://developer.apple.com/programs/)
+   - Set up App Store Connect access
+
+2. **Expo Account**
+   - Sign up at [expo.dev](https://expo.dev)
+   - Install EAS CLI: `npm install -g eas-cli`
+   - Log in: `eas login`
+
+3. **Environment Setup**
+   - Node.js 16+ and npm 7+
+   - Xcode (for iOS builds)
+   - Android Studio (for Android builds)
+
+### Configuration
+
+1. **Update App Configuration**
+   - Update `app.json` with your app's bundle identifier and package name
+   - Configure `eas.json` with your build profiles
+   - Set up `store.config.json` with App Store metadata
+
+2. **Environment Variables**
+   Add these to your `.env` file:
+   ```
+   # App Store Connect
+   APPLE_ID=your_apple_id@example.com
+   APPLE_TEAM_ID=YOUR_TEAM_ID
+   
+   # App Store Connect API Key (optional)
+   APP_STORE_CONNECT_ISSUER_ID=your_issuer_id
+   APP_STORE_CONNECT_KEY_IDENTIFIER=your_key_id
+   APP_STORE_CONNECT_KEY_PATH=auth-key.p8
+   ```
+
+### Building for Production
+
+1. **Configure EAS**
+   ```bash
+   # Initialize EAS if not already done
+   eas init
+   
+   # Configure iOS build
+   eas build:configure --platform ios
+   
+   # Configure Android build
+   eas build:configure --platform android
+   ```
+
+2. **Build the App**
+   ```bash
+   # Build for iOS
+   eas build --platform ios --profile production
+   
+   # Build for Android
+   eas build --platform android --profile production
+   
+   # Or build for both platforms
+   eas build --platform all --profile production
+   ```
+
+### Submitting to App Store
+
+1. **Upload to App Store Connect**
+   ```bash
+   # Submit iOS build to App Store Connect
+   eas submit --platform ios
+   
+   # Submit Android build to Play Store
+   eas submit --platform android
+   ```
+
+2. **Update App Store Metadata**
+   ```bash
+   # Push metadata to App Store Connect
+   eas metadata:push
+   
+   # Pull latest metadata from App Store Connect
+   eas metadata:pull
+   ```
+
+### Automated Builds and Submissions
+
+We've included a GitHub Actions workflow (`.github/workflows/build-and-submit.yml`) that can automatically build and submit your app on every push to the `main` branch.
+
+## Development Setup
+
+### Prerequisites
+
+- Node.js 16+ and npm 7+
+- Expo CLI: `npm install -g expo-cli`
+- EAS CLI: `npm install -g eas-cli`
+- PostgreSQL database ([Neon](https://neon.tech) is recommended for development)
+- Redis (for caching and session management)
+- Anthropic API key
+- Expo account
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/freshchef.git
+   cd freshchef
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Set up environment variables:
+   Create a `.env` file in the root directory with the following variables:
+   ```
+   # Database
+   DATABASE_URL=postgresql://username:password@localhost:5432/freshchef
+   
+   # Redis
+   REDIS_URL=redis://localhost:6379
+   
+   # Anthropic API
+   ANTHROPIC_API_KEY=your_anthropic_api_key
+   
+   # Expo
+   EXPO_TOKEN=your_expo_token
+   
+   # App URLs
+   NEXTAUTH_URL=http://localhost:3000
+   NEXTAUTH_SECRET=your_nextauth_secret
+   ```
+
+4. Initialize the database:
+   ```bash
+   npx prisma db push
+   npx prisma generate
+   ```
+
+5. Start the development server:
+   ```bash
+   # Start Next.js server
+   npm run dev
+   
+   # Start Expo development client (in a new terminal)
+   npx expo start
+   ```
+
+### Development Workflow
+
+- **Web**: Access the web app at `http://localhost:3000`
+- **Mobile**: Use the Expo Go app to scan the QR code from the terminal
+- **Database**: Use Prisma Studio to manage your database: `npx prisma studio`
+
+## Testing
+
+Run the test suite:
+
+```bash
+# Run all tests
+npm test
+
+# Run specific test file
+npm test path/to/test-file.test.ts
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ### Dependencies
 

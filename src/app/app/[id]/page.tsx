@@ -4,14 +4,19 @@ import { getApp } from "@/actions/get-app";
 import AppWrapper from "../../../components/app-wrapper";
 import { freestyle } from "@/lib/freestyle";
 import { db } from "@/lib/db";
-import { appUsers } from "@/db/schema";
+import { appSubscriptions, appUsers, apps } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { getUser } from "@/actions/get-user";
 import { memory } from "@/mastra/agents/builder";
 import { buttonVariants } from "@/components/ui/button";
-import Link from "next/dist/client/link";
+import Link from "next/link";
 import { chatState } from "@/actions/chat-streaming";
 import { RecreateButton } from "@/components/recreate-button";
+import { DeploymentHistory } from "@/components/deployment-history";
+import { DeploymentStatus } from "@/components/deployment-status";
+import { ExpoDeployModal } from "@/components/expo-deploy-modal";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getDeployments } from "@/actions/get-deployments";
 
 export default async function AppPage({
   params,
@@ -28,8 +33,13 @@ export default async function AppPage({
     return <ProjectNotFound />;
   }
 
+  // Track subscriber flag for client gating
+  let isSubscriber = false;
+
+  const isEffectivelyPublic = app.info.is_public || !!app.info.stripeProductId;
+
   // If the app is not public, require authentication and membership
-  if (!app.info.is_public) {
+  if (!isEffectivelyPublic) {
     const user = await getUser();
     if (!user) {
       return <ProjectNotFound />;
@@ -53,17 +63,26 @@ export default async function AppPage({
     if (!user) {
       return <SubscriptionRequired />;
     }
-    const userPermission = (
-      await db
+    const [membership, subscription] = await Promise.all([
+      db
         .select()
         .from(appUsers)
         .where(and(eq(appUsers.userId, user.id), eq(appUsers.appId, id)))
-        .limit(1)
-    ).at(0);
+        .limit(1),
+      db
+        .select()
+        .from(appSubscriptions)
+        .where(and(eq(appSubscriptions.userId, user.id), eq(appSubscriptions.appId, id)))
+        .limit(1),
+    ]);
 
-    if (!userPermission) {
+    const hasMembership = !!membership.at(0);
+    isSubscriber = !!subscription.at(0);
+
+    if (!hasMembership && !isSubscriber) {
       return <SubscriptionRequired />;
     }
+    // If subscriber but not member, allow access; we'll pass flag below.
   }
 
   // Determine if the current viewer is a member to conditionally show "Recreate"
@@ -135,12 +154,13 @@ export default async function AppPage({
       running={(await chatState(app.info.id)).state === "running"}
       showRecreate={showRecreate}
       sourceAppId={app.info.id}
-      isPublic={app.info.is_public}
+      isPublic={isEffectivelyPublic}
       isOwner={isOwner}
       isRecreatable={app.info.is_recreatable}
       isCrowdfunded={!!app.info.stripeProductId}
       stripeProductId={app.info.stripeProductId ?? undefined}
       requiresSubscription={app.info.requires_subscription}
+      isSubscriber={isSubscriber}
       topBarActions={
         showRecreate && app.info.id ? (
           <RecreateButton sourceAppId={app.info.id} />

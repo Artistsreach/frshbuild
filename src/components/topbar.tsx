@@ -96,7 +96,7 @@ export function TopBar({
           </>
         )}
         {children}
-        {isPublic && !isCrowdfunded && (
+        {isOwner && isPublic && !isCrowdfunded && (
           <CrowdfundModal appName={appName} appId={appId} />
         )}
         {/* Subscribe button logic, similar to AppCard */}
@@ -110,6 +110,7 @@ export function TopBar({
               productId={stripeProductId}
               open={tierModalOpen}
               onOpenChange={setTierModalOpen}
+              appId={appId}
             />
           </>
         )}

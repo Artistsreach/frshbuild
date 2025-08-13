@@ -7,7 +7,7 @@ import { appsTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 
-export async function createCheckoutSession(priceId: string) {
+export async function createCheckoutSession(priceId: string, appId: string) {
   const user = await getUser();
 
   const requestHeaders = await headers();
@@ -21,6 +21,11 @@ export async function createCheckoutSession(priceId: string) {
         },
       ],
       mode: "subscription",
+      client_reference_id: user.userId,
+      metadata: { appId, userId: user.userId },
+      subscription_data: {
+        metadata: { appId, userId: user.userId },
+      },
       success_url: `${requestHeaders.get("origin")}/`,
       cancel_url: `${requestHeaders.get("origin")}/`,
     },
