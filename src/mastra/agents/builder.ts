@@ -2,10 +2,7 @@ import { SYSTEM_MESSAGE } from "@/lib/system";
 import { openai } from "@ai-sdk/openai";
 import { Agent } from "@mastra/core/agent";
 import { createTool } from "@mastra/core/tools";
-import {
-  scrapeTool,
-  searchTool,
-} from "../tools/firecrawl";
+import { scrapeTool, extractTool, checkExtractStatusTool, crawlTool, checkCrawlStatusTool, searchTool } from "../tools/firecrawl";
 import { easLoginTool, easBuildTool, easSubmitTool } from "../tools/expo";
 import { cloneRepoTool } from "../tools/git";
 import { createProjectTool } from "../tools/supabase";
@@ -42,6 +39,10 @@ export const builderAgent = new Agent({
   memory,
   tools: {
     scrape: scrapeTool,
+    extract: extractTool,
+    checkExtractStatus: checkExtractStatusTool,
+    crawl: crawlTool,
+    checkCrawlStatus: checkCrawlStatusTool,
     search: searchTool,
     easLogin: easLoginTool,
     easBuild: easBuildTool,

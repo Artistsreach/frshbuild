@@ -30,7 +30,4 @@ Tips for games:
 
 NextJS tips:
 - Don't forget to put "use client" at the top of all the files that need it, otherwise they the page will just error.
-
-- When the user asks you to scrape a website, you should use the \`firecrawl_scrape\` tool.
-- When the user asks you to search for something on the web, you should use the \`firecrawl_search\` tool.
 `;
