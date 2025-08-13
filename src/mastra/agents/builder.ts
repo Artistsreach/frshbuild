@@ -5,6 +5,7 @@ import { createTool } from "@mastra/core/tools";
 import { scrapeTool, extractTool, checkExtractStatusTool, crawlTool, checkCrawlStatusTool, searchTool } from "../tools/firecrawl";
 import { easLoginTool, easBuildTool, easSubmitTool } from "../tools/expo";
 import { cloneRepoTool } from "../tools/git";
+import { addDatabaseTool } from "../tools/supabase";
 import { Memory } from "@mastra/memory";
 import { PostgresStore, PgVector } from "@mastra/pg";
 import { z } from "zod";
@@ -47,6 +48,7 @@ export const builderAgent = new Agent({
     easBuild: easBuildTool,
     easSubmit: easSubmitTool,
     cloneFreestyleRepo: cloneRepoTool,
+    addDatabaseToApp: addDatabaseTool,
     update_todo_list: createTool({
       id: "update_todo_list",
       description:
