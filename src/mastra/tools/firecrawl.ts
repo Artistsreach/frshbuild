@@ -23,20 +23,24 @@ const scrapeInputSchema = z.object({
   skipTlsVerification: z.boolean().optional(),
   timeout: z.number().optional(),
   parsePDF: z.boolean().optional(),
-  jsonOptions: z.any().optional(),
+  jsonOptions: z.object({
+    schema: z.any().optional(),
+    prompt: z.string().optional(),
+    systemPrompt: z.string().optional(),
+  }).optional(),
   actions: z.any().optional(),
   location: z.any().optional(),
   removeBase64Images: z.boolean().optional(),
   blockAds: z.boolean().optional(),
   proxy: z.enum(["basic", "stealth", "auto"]).optional(),
   storeInCache: z.boolean().optional(),
-  formats: z.array(z.enum(["markdown", "html", "rawHtml", "screenshot", "links"])).optional(),
+  formats: z.array(z.enum(["markdown", "html", "rawHtml", "screenshot", "links", "json"])).optional(),
   changeTrackingOptions: z.any().optional(),
 });
 
 export const scrapeTool = createTool({
   id: "firecrawl_scrape",
-  description: "Scrape a URL and return the content in various formats like markdown, HTML, and a screenshot.",
+  description: "Scrape a URL and return the content in various formats like markdown, HTML, and a screenshot. Can also be used to extract structured data.",
   inputSchema: scrapeInputSchema,
   outputSchema: z.any(),
   execute: async (executionContext) => {
@@ -73,109 +77,6 @@ export const scrapeTool = createTool({
   },
 });
 
-const extractInputSchema = z.object({
-  urls: z.array(z.string()),
-  prompt: z.string().optional(),
-  schema: z.any().optional(),
-  enableWebSearch: z.boolean().optional(),
-  ignoreSitemap: z.boolean().optional(),
-  includeSubdomains: z.boolean().optional(),
-  showSources: z.boolean().optional(),
-  scrapeOptions: z.any().optional(),
-  ignoreInvalidURLs: z.boolean().optional(),
-});
-
-export const extractTool = createTool({
-  id: "firecrawl_extract",
-  description: "Extract structured data from multiple URLs based on a provided schema and prompt.",
-  inputSchema: extractInputSchema,
-  outputSchema: z.any(),
-  execute: async (executionContext) => {
-    const { context, writer } = executionContext as StreamingToolExecutionContext<typeof extractInputSchema>;
-    if (writer) {
-      writer.write({ type: 'notification', status: 'pending', message: `Extracting data from ${context.urls.length} URL(s)...` });
-    }
-
-    if (!firecrawlApiKey) {
-      throw new Error("Firecrawl API key not found.");
-    }
-
-    const response = await fetch("https://api.firecrawl.dev/v1/extract", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${firecrawlApiKey}`,
-      },
-      body: JSON.stringify(context),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      if (writer) {
-        writer.write({ type: 'notification', status: 'error', message: `Extraction failed: ${error.error}` });
-      }
-      throw new Error(`Firecrawl API error: ${error.error}`);
-    }
-
-    const data = await response.json();
-    if (data.jobId) {
-      if (writer) {
-        writer.write({ type: 'notification', status: 'success', message: `Extraction job started with ID: ${data.jobId}` });
-      }
-      return {
-        jobId: data.jobId,
-        status: "pending",
-        message: "Extraction job started. Use the checkExtractStatus tool to check the status of the job.",
-      };
-    }
-
-    if (writer) {
-      writer.write({ type: 'notification', status: 'success', message: "Extraction completed successfully." });
-    }
-    return data;
-  },
-});
-
-const checkExtractStatusInputSchema = z.object({
-  jobId: z.string(),
-});
-
-export const checkExtractStatusTool = createTool({
-  id: "firecrawl_check_extract_status",
-  description: "Check the status of an extraction job.",
-  inputSchema: checkExtractStatusInputSchema,
-  outputSchema: z.any(),
-  execute: async (executionContext) => {
-    const { context: { jobId }, writer } = executionContext as StreamingToolExecutionContext<typeof checkExtractStatusInputSchema>;
-    if (writer) {
-      writer.write({ type: 'notification', status: 'pending', message: `Checking status for job ${jobId}...` });
-    }
-
-    if (!firecrawlApiKey) {
-      throw new Error("Firecrawl API key not found.");
-    }
-
-    const response = await fetch(`https://api.firecrawl.dev/v1/extract/${jobId}`, {
-      headers: {
-        Authorization: `Bearer ${firecrawlApiKey}`,
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      if (writer) {
-        writer.write({ type: 'notification', status: 'error', message: `Status check failed: ${error.error}` });
-      }
-      throw new Error(`Firecrawl API error: ${error.error}`);
-    }
-
-    const data = await response.json();
-    if (writer) {
-      writer.write({ type: 'notification', status: 'success', message: `Job ${jobId} status: ${data.status}` });
-    }
-    return data;
-  },
-});
 
 const crawlInputSchema = z.object({
     url: z.string(),
