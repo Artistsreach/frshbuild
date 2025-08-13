@@ -4,14 +4,8 @@ import { Agent } from "@mastra/core/agent";
 import { createTool } from "@mastra/core/tools";
 import {
   scrapeTool,
-  crawlTool,
-  checkCrawlStatusTool,
-  searchTool,
-  mapTool,
-  batchScrapeTool,
-  checkBatchScrapeStatusTool,
   extractTool,
-  getExtractStatusTool,
+  searchTool,
 } from "../tools/firecrawl";
 import { easLoginTool, easBuildTool, easSubmitTool } from "../tools/expo";
 import { cloneRepoTool } from "../tools/git";
@@ -49,14 +43,8 @@ export const builderAgent = new Agent({
   memory,
   tools: {
     scrape: scrapeTool,
-    crawl: crawlTool,
-    checkCrawlStatus: checkCrawlStatusTool,
-    search: searchTool,
-    map: mapTool,
-    batchScrape: batchScrapeTool,
-    checkBatchScrapeStatus: checkBatchScrapeStatusTool,
     extract: extractTool,
-    getExtractStatus: getExtractStatusTool,
+    search: searchTool,
     easLogin: easLoginTool,
     easBuild: easBuildTool,
     easSubmit: easSubmitTool,
