@@ -172,7 +172,7 @@ const searchInputSchema = z.object({
 
 export const searchTool = createTool({
     id: "firecrawl_search",
-    description: "Search the web and optionally scrape the results.",
+    description: "Search the web and optionally scrape results.",
     inputSchema: searchInputSchema,
     outputSchema: z.any(),
     execute: async (executionContext) => {
