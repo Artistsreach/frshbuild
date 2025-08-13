@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "ios": {
+      "bundleIdentifier": "com.yourcompany.yourapp"
+    },
+    "android": {
+      "package": "com.yourcompany.yourapp"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "df2d4e5e-3d65-4f3a-8a79-15e4665bcf17"
+      }
+    }
+  }
+}

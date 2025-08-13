@@ -9,27 +9,30 @@ type StreamingToolExecutionContext<T extends z.ZodSchema | undefined> = ToolExec
   };
 };
 
-// --- easConfigureTool ---
-const easConfigureInputSchema = z.object({
-  appPath: z.string().describe("The path to the app to configure, relative to the project root."),
+// --- easLoginTool ---
+const easLoginInputSchema = z.object({
+  username: z.string().describe("The Expo account username."),
+  password: z.string().describe("The Expo account password."),
 });
 
-export const easConfigureTool = createTool({
-  id: "eas_configure",
-  description: "Configures the project for EAS Build by creating or updating eas.json.",
-  inputSchema: easConfigureInputSchema,
+export const easLoginTool = createTool({
+  id: "eas_login",
+  description: "Logs in to an Expo account non-interactively.",
+  inputSchema: easLoginInputSchema,
   outputSchema: z.object({
     success: z.boolean(),
     message: z.string(),
   }),
   execute: async (executionContext) => {
-    const { context: { appPath }, writer } = executionContext as StreamingToolExecutionContext<typeof easConfigureInputSchema>;
+    const { context, writer } = executionContext as StreamingToolExecutionContext<typeof easLoginInputSchema>;
+    const { username, password } = context;
+
     if (writer) {
-      writer.write({ type: 'notification', status: 'pending', message: `Configuring EAS for ${appPath}...` });
+      writer.write({ type: 'notification', status: 'pending', message: `Logging in to EAS as ${username}...` });
     }
+
     return new Promise((resolve, reject) => {
-      const easProcess = spawn("eas", ["build:configure", "--non-interactive"], {
-        cwd: appPath,
+      const easProcess = spawn("eas", ["login", "-u", username, "-p", password, "--non-interactive"], {
         stdio: "pipe",
       });
 
@@ -40,32 +43,28 @@ export const easConfigureTool = createTool({
       easProcess.on("close", (code) => {
         if (code === 0) {
           if (writer) {
-            writer.write({ type: 'notification', status: 'success', message: "EAS configured successfully." });
+            writer.write({ type: 'notification', status: 'success', message: "EAS login successful." });
           }
-          resolve({ success: true, message: `eas.json configured successfully. Output: ${output}` });
+          resolve({ success: true, message: `EAS login successful. Output: ${output}` });
         } else {
           if (writer) {
-            writer.write({ type: 'notification', status: 'error', message: `EAS configuration failed. Exit code: ${code}` });
+            writer.write({ type: 'notification', status: 'error', message: `EAS login failed. Exit code: ${code}` });
           }
-          reject(new Error(`EAS configure process exited with code ${code}. Output: ${output}`));
+          reject(new Error(`EAS login process exited with code ${code}. Output: ${output}`));
         }
-      });
-
-      easProcess.on("error", (err) => {
-        if (writer) {
-          writer.write({ type: 'notification', status: 'error', message: `EAS configuration failed: ${err.message}` });
-        }
-        reject(new Error(`Failed to start EAS configure process: ${err.message}`));
       });
     });
   },
 });
 
-// --- easBuildTool ---
+
+// --- easBuildTool (Re-implemented) ---
 const easBuildInputSchema = z.object({
   platform: z.enum(["ios", "android", "all"]),
   profile: z.string().optional(),
-  appPath: z.string().describe("The path to the app to build, relative to the project root."),
+  appPath: z.string().describe("The local filesystem path to the app to build."),
+  appleId: z.string().optional().describe("Apple ID for authentication with App Store Connect."),
+  appleTeamId: z.string().optional().describe("Apple Team ID for the build."),
 });
 
 export const easBuildTool = createTool({
@@ -78,25 +77,23 @@ export const easBuildTool = createTool({
   }),
   execute: async (executionContext) => {
     const { context, writer } = executionContext as StreamingToolExecutionContext<typeof easBuildInputSchema>;
-    const { platform, profile, appPath } = context;
+    const { platform, profile, appPath, appleId, appleTeamId } = context;
 
     if (writer) {
       writer.write({ type: 'notification', status: 'pending', message: `Starting EAS build for ${platform}...` });
     }
 
     const args = ["build", "--platform", platform, "--non-interactive"];
-    if (profile) {
-      args.push("--profile", profile);
-    }
+    if (profile) args.push("--profile", profile);
+    if (appleId) args.push("--apple-id", appleId);
+    if (appleTeamId) args.push("--apple-team-id", appleTeamId);
 
     return new Promise((resolve, reject) => {
       const easProcess = spawn("eas", args, { cwd: appPath, stdio: "pipe" });
 
       const handleData = (data: Buffer) => {
         const output = data.toString();
-        if (writer) {
-          writer.write({ type: "log", data: output });
-        }
+        if (writer) writer.write({ type: "log", data: output });
       };
 
       easProcess.stdout.on("data", handleData);
@@ -104,92 +101,25 @@ export const easBuildTool = createTool({
 
       easProcess.on("close", (code) => {
         if (code === 0) {
-          if (writer) {
-            writer.write({ type: 'notification', status: 'success', message: "EAS build completed successfully." });
-          }
+          if (writer) writer.write({ type: 'notification', status: 'success', message: "EAS build completed successfully." });
           resolve({ success: true, message: "EAS build process completed successfully." });
         } else {
-          if (writer) {
-            writer.write({ type: 'notification', status: 'error', message: `EAS build failed. Exit code: ${code}` });
-          }
+          if (writer) writer.write({ type: 'notification', status: 'error', message: `EAS build failed. Exit code: ${code}` });
           reject(new Error(`EAS build process exited with code ${code}`));
         }
       });
-
-      easProcess.on("error", (err) => {
-        if (writer) {
-          writer.write({ type: 'notification', status: 'error', message: `EAS build failed: ${err.message}` });
-        }
-        reject(new Error(`Failed to start EAS build process: ${err.message}`));
-      });
     });
   },
 });
 
-// --- easBuildListTool ---
-const easBuildListInputSchema = z.object({
-  platform: z.enum(["ios", "android", "all"]).optional(),
-  appPath: z.string().describe("The path to the app, relative to the project root."),
-});
-
-export const easBuildListTool = createTool({
-  id: "eas_build_list",
-  description: "Lists recent builds for the project, returning structured JSON data.",
-  inputSchema: easBuildListInputSchema,
-  outputSchema: z.any(),
-  execute: async (executionContext) => {
-    const { context: { platform, appPath }, writer } = executionContext as StreamingToolExecutionContext<typeof easBuildListInputSchema>;
-    if (writer) {
-      writer.write({ type: 'notification', status: 'pending', message: "Fetching build list..." });
-    }
-    const args = ["build:list", "--json"];
-    if (platform) {
-      args.push("--platform", platform);
-    }
-
-    return new Promise((resolve, reject) => {
-      const easProcess = spawn("eas", args, { cwd: appPath, stdio: "pipe" });
-
-      let jsonOutput = "";
-      let errorOutput = "";
-      easProcess.stdout.on("data", (data) => (jsonOutput += data.toString()));
-      easProcess.stderr.on("data", (data) => (errorOutput += data.toString()));
-
-      easProcess.on("close", (code) => {
-        if (code === 0) {
-          try {
-            const jsonStartIndex = jsonOutput.indexOf('[');
-            const jsonEndIndex = jsonOutput.lastIndexOf(']');
-            if (jsonStartIndex === -1 || jsonEndIndex === -1) {
-                throw new Error('No JSON array found in the output.');
-            }
-            const jsonString = jsonOutput.substring(jsonStartIndex, jsonEndIndex + 1);
-            if (writer) {
-              writer.write({ type: 'notification', status: 'success', message: "Build list fetched successfully." });
-            }
-            resolve(JSON.parse(jsonString));
-          } catch (e: any) {
-            if (writer) {
-              writer.write({ type: 'notification', status: 'error', message: `Failed to parse build list: ${e.message}` });
-            }
-            reject(new Error(`Failed to parse JSON from EAS build:list: ${e.message}. Raw output: ${jsonOutput}`));
-          }
-        } else {
-          if (writer) {
-            writer.write({ type: 'notification', status: 'error', message: `Failed to fetch build list. Exit code: ${code}` });
-          }
-          reject(new Error(`EAS build:list process exited with code ${code}. Error: ${errorOutput}`));
-        }
-      });
-    });
-  },
-});
-
-// --- easSubmitTool ---
+// --- easSubmitTool (Re-implemented) ---
 const easSubmitInputSchema = z.object({
   platform: z.enum(["ios", "android"]),
   buildId: z.string().optional().describe("The ID of the build to submit. If not provided, 'latest' is used."),
-  appPath: z.string().describe("The path to the app to submit, relative to the project root."),
+  appPath: z.string().describe("The local filesystem path to the app to submit."),
+  appleId: z.string().optional().describe("Apple ID for authentication."),
+  appleTeamId: z.string().optional().describe("Apple Team ID for the submission."),
+  ascAppId: z.string().optional().describe("App Store Connect App ID for the app."),
 });
 
 export const easSubmitTool = createTool({
@@ -202,27 +132,25 @@ export const easSubmitTool = createTool({
   }),
   execute: async (executionContext) => {
     const { context, writer } = executionContext as StreamingToolExecutionContext<typeof easSubmitInputSchema>;
-    const { platform, buildId, appPath } = context;
+    const { platform, buildId, appPath, appleId, appleTeamId, ascAppId } = context;
 
     if (writer) {
       writer.write({ type: 'notification', status: 'pending', message: `Starting EAS submission for ${platform}...` });
     }
 
     const args = ["submit", "--platform", platform, "--non-interactive"];
-    if (buildId) {
-      args.push("--id", buildId);
-    } else {
-      args.push("--latest");
-    }
+    if (buildId) args.push("--id", buildId);
+    else args.push("--latest");
+    if (appleId) args.push("--apple-id", appleId);
+    if (appleTeamId) args.push("--apple-team-id", appleTeamId);
+    if (ascAppId) args.push("--asc-app-id", ascAppId);
 
     return new Promise((resolve, reject) => {
       const easProcess = spawn("eas", args, { cwd: appPath, stdio: "pipe" });
 
       const handleData = (data: Buffer) => {
         const output = data.toString();
-        if (writer) {
-          writer.write({ type: "log", data: output });
-        }
+        if (writer) writer.write({ type: "log", data: output });
       };
 
       easProcess.stdout.on("data", handleData);
@@ -230,23 +158,12 @@ export const easSubmitTool = createTool({
 
       easProcess.on("close", (code) => {
         if (code === 0) {
-          if (writer) {
-            writer.write({ type: 'notification', status: 'success', message: "EAS submission completed successfully." });
-          }
+          if (writer) writer.write({ type: 'notification', status: 'success', message: "EAS submission completed successfully." });
           resolve({ success: true, message: "EAS submit process completed successfully." });
         } else {
-          if (writer) {
-            writer.write({ type: 'notification', status: 'error', message: `EAS submission failed. Exit code: ${code}` });
-          }
+          if (writer) writer.write({ type: 'notification', status: 'error', message: `EAS submission failed. Exit code: ${code}` });
           reject(new Error(`EAS submit process exited with code ${code}`));
         }
-      });
-
-      easProcess.on("error", (err) => {
-        if (writer) {
-          writer.write({ type: 'notification', status: 'error', message: `EAS submission failed: ${err.message}` });
-        }
-        reject(new Error(`Failed to start EAS submit process: ${err.message}`));
       });
     });
   },
