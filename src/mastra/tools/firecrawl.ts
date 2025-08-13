@@ -53,13 +53,14 @@ export const scrapeTool = createTool({
       throw new Error("Firecrawl API key not found.");
     }
 
+    const body = Object.fromEntries(Object.entries(context).filter(([_, v]) => v !== undefined));
     const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${firecrawlApiKey}`,
       },
-      body: JSON.stringify(context),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -100,13 +101,14 @@ export const crawlTool = createTool({
         if (!firecrawlApiKey) {
             throw new Error("Firecrawl API key not found.");
         }
+        const body = Object.fromEntries(Object.entries(context).filter(([_, v]) => v !== undefined));
         const response = await fetch("https://api.firecrawl.dev/v1/crawl", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${firecrawlApiKey}`,
             },
-            body: JSON.stringify(context),
+            body: JSON.stringify(body),
         });
         if (!response.ok) {
             const error = await response.json();
@@ -172,7 +174,7 @@ const searchInputSchema = z.object({
 
 export const searchTool = createTool({
     id: "firecrawl_search",
-    description: "Search the web and optionally scrape results.",
+    description: "Search the web and optionally scrape the results.",
     inputSchema: searchInputSchema,
     outputSchema: z.any(),
     execute: async (executionContext) => {
@@ -184,13 +186,14 @@ export const searchTool = createTool({
         if (!firecrawlApiKey) {
             throw new Error("Firecrawl API key not found.");
         }
+        const body = Object.fromEntries(Object.entries(context).filter(([_, v]) => v !== undefined));
         const response = await fetch("https://api.firecrawl.dev/v1/search", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${firecrawlApiKey}`,
             },
-            body: JSON.stringify(context),
+            body: JSON.stringify(body),
         });
         if (!response.ok) {
             const error = await response.json();
