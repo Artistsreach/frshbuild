@@ -1,8 +1,8 @@
 .loader {
   height: 4px;
   width: 130px;
-  --c: no-repeat linear-gradient(#6100ee 0 0);
-  background: var(--c), var(--c), #d7b8fc;
+  --c: no-repeat linear-gradient(#22c55e 0 0);
+  background: var(--c), var(--c), #bbf7d0;
   background-size: 60% 100%;
   animation: l16 3s infinite;
 }

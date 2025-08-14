@@ -10,6 +10,7 @@ import {
   Loader2Icon,
   GlobeIcon,
   LockIcon,
+  Store,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -27,11 +28,14 @@ import { setAppRecreatable } from "@/actions/set-app-recreatable";
 import { setAppSubscription } from "@/actions/set-app-subscription";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
+import AppStoreDeployModal from "./app-store-deploy-modal";
 
 interface ShareButtonProps {
   className?: string;
   domain?: string;
   appId: string;
+  appName?: string;
+  baseId?: string;
   isPublic?: boolean;
   isRecreatable?: boolean;
   requiresSubscription?: boolean;
@@ -41,6 +45,8 @@ export function ShareButton({
   className,
   domain,
   appId,
+  appName = "Your App",
+  baseId,
   isPublic = false,
   isRecreatable = false,
   requiresSubscription = false,
@@ -51,6 +57,10 @@ export function ShareButton({
   const [publicState, setPublicState] = useState(isPublic);
   const [recreatable, setRecreatable] = useState(isRecreatable);
   const [requiresSubscriptionState, setRequiresSubscriptionState] = useState(requiresSubscription);
+  const [showAppStoreModal, setShowAppStoreModal] = useState(false);
+
+  // Check if this is an Expo app based on baseId
+  const isExpoApp = baseId?.includes('expo') || baseId?.includes('react-native');
 
   const handleRecreatableChange = async (checked: boolean) => {
     setRecreatable(checked);
@@ -232,6 +242,18 @@ export function ShareButton({
                   )}
                   Publish Latest
                 </Button>
+
+                {isExpoApp && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 w-full"
+                    onClick={() => setShowAppStoreModal(true)}
+                  >
+                    <Store className="h-4 w-4" />
+                    Publish to App Store
+                  </Button>
+                )}
               </div>
             </>
           ) : (
@@ -271,7 +293,7 @@ export function ShareButton({
               <Button
                 variant="default"
                 size="default"
-                className="gap-2 w-full"
+                className="gap-2 w-full mb-2"
                 onClick={handlePublish}
                 disabled={isPublishing}
               >
@@ -282,10 +304,30 @@ export function ShareButton({
                 )}
                 Publish
               </Button>
+              
+              {isExpoApp && (
+                <Button
+                  variant="outline"
+                  size="default"
+                  className="gap-2 w-full"
+                  onClick={() => setShowAppStoreModal(true)}
+                >
+                  <Store className="h-4 w-4" />
+                  Publish to App Store
+                </Button>
+              )}
             </div>
           )}
         </div>
       </DialogContent>
+      
+      {/* App Store Deployment Modal */}
+      <AppStoreDeployModal
+        appId={appId}
+        appName={appName}
+        open={showAppStoreModal}
+        onOpenChange={setShowAppStoreModal}
+      />
     </Dialog>
   );
 }

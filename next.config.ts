@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   },
   devIndicators: false,
   images: {
-    domains: ["static.wixstatic.com", "upload.wikimedia.org"],
+    domains: ["static.wixstatic.com", "upload.wikimedia.org", "inrveiaulksfmzsbyzqj.supabase.co"],
   },
   env: {
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:

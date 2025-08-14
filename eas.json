@@ -1,20 +1,37 @@
 {
   "cli": {
     "version": ">= 16.17.4",
-    "appVersionSource": "remote"
+    "appVersionSource": "remote",
+    "requireCommit": true,
+    "promptToConfigurePushNotifications": false
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
-        "simulator": true
+        "simulator": true,
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_ENV": "development"
       }
     },
     "preview": {
       "distribution": "internal",
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "simulator": false
+      },
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "env": {
+        "APP_ENV": "staging"
       }
     },
     "production": {
@@ -23,7 +40,16 @@
       "ios": {
         "resourceClass": "m-large",
         "distribution": "app-store",
-        "image": "latest"
+        "image": "latest",
+        "autoIncrement": "buildNumber"
+      },
+      "android": {
+        "buildType": "app-bundle",
+        "gradleCommand": ":app:bundleRelease",
+        "autoIncrement": "versionCode"
+      },
+      "env": {
+        "APP_ENV": "production"
       }
     }
   },
@@ -35,11 +61,16 @@
         "appleTeamId": "$APPLE_TEAM_ID",
         "sku": "$APP_SKU",
         "language": "en-US",
-        "companyName": "Your Company Name",
-        "appName": "Your App Name",
-        "ascApiKeyPath": "auth-key.p8",
+        "companyName": "$APP_COMPANY_NAME",
+        "appName": "$APP_DISPLAY_NAME",
+        "ascApiKeyPath": "./credentials/AuthKey_$APP_STORE_CONNECT_KEY_IDENTIFIER.p8",
         "ascApiKeyIssuerId": "$APP_STORE_CONNECT_ISSUER_ID",
         "ascApiKeyId": "$APP_STORE_CONNECT_KEY_IDENTIFIER"
+      },
+      "android": {
+        "track": "internal",
+        "serviceAccountKeyPath": "./credentials/google-service-account-key.json",
+        "releaseStatus": "completed"
       }
     }
   }

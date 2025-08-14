@@ -117,7 +117,13 @@ export function TopBar({
         {isOwner && (
           <>
             <Button size="sm" variant="outline" onClick={() => setSupabaseModalOpen(true)}>
-              Connect Supabase
+              <Image
+                src="https://inrveiaulksfmzsbyzqj.supabase.co/storage/v1/object/public/images/IMG_7042.png"
+                alt="Connect Supabase"
+                width={16}
+                height={16}
+                className="h-4 w-4"
+              />
             </Button>
             <SupabaseConnectModal
               open={supabaseModalOpen}
