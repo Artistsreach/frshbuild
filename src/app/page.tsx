@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { PromptInput, PromptInputActions } from "@/components/ui/prompt-input";
 import { FrameworkSelector } from "@/components/framework-selector";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ExampleButton } from "@/components/ExampleButton";
 import { UserButton } from "@stackframe/stack";
@@ -39,7 +39,7 @@ function HomePageContent() {
     queryFn: () => getUser(),
   });
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     setIsLoading(true);
 
     // window.location = `http://localhost:3000/app/new?message=${encodeURIComponent(prompt)}&template=${framework}`;
@@ -47,7 +47,47 @@ function HomePageContent() {
     router.push(
       `/app/new?message=${encodeURIComponent(prompt)}&template=${framework}`
     );
-  };
+  }, [prompt, framework, router]);
+
+  useEffect(() => {
+    // 1) Tell parent we're ready
+    try {
+      window.parent?.postMessage({ type: "FF_READY" }, "*");
+    } catch {}
+
+    const applyPrompt = (p: string, shouldAutoBuild: boolean) => {
+      if (!p) return;
+      setPrompt(p);
+      // Wait for React state -> button disabled prop to update
+      setTimeout(() => {
+        if (shouldAutoBuild) handleSubmit();
+      }, 0);
+    };
+
+    // 2) Read from URL and hash on initial load
+    try {
+      const search = new URLSearchParams(window.location.search);
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const urlPrompt = search.get("prompt") || hash.get("prompt");
+      const autobuild = search.get("autobuild") || hash.get("autobuild");
+      if (urlPrompt) {
+        applyPrompt(urlPrompt, autobuild === "1" || autobuild === "true");
+      }
+    } catch {}
+
+    // 3) Accept postMessage from parent
+    const onMessage = (e: MessageEvent) => {
+      // Optional: restrict to your desktop origin
+      // if (e.origin !== "http://localhost:5173") return;
+      const data = e.data as any;
+      if (data?.type === "FF_BUILD_APP" && typeof data.prompt === "string") {
+        applyPrompt(data.prompt, true);
+        try { window.parent?.postMessage({ type: "FF_ACK", received: true }, "*"); } catch {}
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [setPrompt, handleSubmit]);
 
   const startFunding = async () => {
     try {
@@ -128,14 +168,21 @@ function HomePageContent() {
                     className="relative z-10 border-none bg-transparent shadow-none transition-all duration-200 ease-in-out "
                   >
                     <div id="home-prompt-field">
-                      <PromptInputTextareaWithTypingAnimation />
+                      <PromptInputTextareaWithTypingAnimation
+                        id="home-prompt-input"
+                        name="app_description"
+                        autoComplete="on"
+                        data-ff-role="prompt"
+                      />
                     </div>
                     <PromptInputActions>
                       <div id="home-build-button">
                         <Button
+                          type="button"
                           onClick={handleSubmit}
                           disabled={isLoading || !prompt.trim()}
                           className="bg-blue-500 hover:bg-blue-600 text-white rounded-full px-6 py-2 text-sm font-semibold"
+                          data-ff-role="build"
                         >
                           {isLoading ? (
                             <svg

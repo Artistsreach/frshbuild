@@ -2,7 +2,15 @@ import { useRef } from "react";
 import { PromptInputTextarea } from "./ui/prompt-input";
 import { useTypingAnimation } from "../hooks/typing-animation";
 
-export function PromptInputTextareaWithTypingAnimation() {
+export function PromptInputTextareaWithTypingAnimation({
+  id,
+  name,
+  autoComplete,
+}: {
+  id?: string;
+  name?: string;
+  autoComplete?: string;
+}) {
   const placeholderRef = useRef<HTMLTextAreaElement>(null);
 
   const exampleIdeas = [
@@ -22,6 +30,9 @@ export function PromptInputTextareaWithTypingAnimation() {
 
   return (
     <PromptInputTextarea
+      id={id}
+      name={name}
+      autoComplete={autoComplete}
       ref={placeholderRef}
       placeholder={displayText}
       className="min-h-[100px] w-full bg-transparent dark:bg-transparent backdrop-blur-sm pr-12"
