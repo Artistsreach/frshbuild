@@ -96,9 +96,7 @@ export function TopBar({
           </>
         )}
         {children}
-        {isOwner && isPublic && !isCrowdfunded && (
-          <CrowdfundModal appName={appName} appId={appId} />
-        )}
+        {/* Crowdfund moved to WebView right controls; hide here */}
         {/* Subscribe button logic, similar to AppCard */}
         {stripeProductId && isPublic && !isOwner && (
           <>

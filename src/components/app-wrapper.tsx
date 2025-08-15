@@ -303,6 +303,8 @@ export default function AppWrapper({
               isRecreatable={!!isRecreatable}
               isOwner={isOwner}
               requiresSubscription={!!requiresSubscription}
+              appName={appName}
+              isCrowdfunded={!!isCrowdfunded}
             />
           </div>
         </div>

@@ -11,6 +11,7 @@ import { Button } from "./ui/button";
 import { RefreshCwIcon, Monitor, Tablet, Smartphone } from "lucide-react";
 import { ShareButton } from "./share-button";
 import { ModeToggle } from "./theme-toggle";
+import { CrowdfundModal } from "./crowdfund-modal";
 
 export default function WebView(props: {
   repo: string;
@@ -21,6 +22,8 @@ export default function WebView(props: {
   isPublic?: boolean;
   isRecreatable?: boolean;
   requiresSubscription?: boolean;
+  appName?: string;
+  isCrowdfunded?: boolean;
 }) {
   function requestDevServer({ repoId }: { repoId: string }) {
     return requestDevServerInner({ repoId });
@@ -93,24 +96,30 @@ export default function WebView(props: {
             <Smartphone className="h-4 w-4" />
           </Button>
         </div>
-        <Button
-          variant={"ghost"}
-          size={"icon"}
-          onClick={() => devServerRef.current?.refresh()}
-        >
-          <RefreshCwIcon />
-        </Button>
-        <ModeToggle />
-        {props.isOwner && (
-          <ShareButton
-            domain={props.domain}
-            appId={props.appId}
-            isPublic={props.isPublic}
-            isRecreatable={props.isRecreatable}
-            requiresSubscription={props.requiresSubscription}
-            baseId={props.baseId}
-          />
-        )}
+        <div className="flex items-center gap-2 ml-auto">
+          <Button
+            variant={"ghost"}
+            size={"icon"}
+            onClick={() => devServerRef.current?.refresh()}
+            aria-label="Refresh preview"
+          >
+            <RefreshCwIcon />
+          </Button>
+          <ModeToggle />
+          {props.isOwner && props.isPublic && !props.isCrowdfunded && (
+            <CrowdfundModal appName={props.appName ?? "App"} appId={props.appId} />
+          )}
+          {props.isOwner && (
+            <ShareButton
+              domain={props.domain}
+              appId={props.appId}
+              isPublic={props.isPublic}
+              isRecreatable={props.isRecreatable}
+              requiresSubscription={props.requiresSubscription}
+              baseId={props.baseId}
+            />
+          )}
+        </div>
       </div>
       <div ref={containerRef} className="flex-1 overflow-auto flex items-center justify-center p-3">
         {/*
