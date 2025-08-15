@@ -68,6 +68,10 @@ export const deploymentsTable = pgTable('deployments', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
+// Back-compat exports and types
+export { deploymentsTable as deployments };
+export type Deployment = typeof deploymentsTable.$inferSelect;
+
 export const appsTable = pgTable("apps", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull().default("Unnamed App"),
@@ -123,6 +127,9 @@ export const appsTable = pgTable("apps", {
     };
   }>(),
 });
+
+// Back-compat alias so existing imports using `apps` continue to work
+export { appsTable as apps };
 
 export const appPermissions = pgEnum("app_user_permission", [
   "read",

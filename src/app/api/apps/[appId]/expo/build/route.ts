@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs';
+import { getUser } from '@/actions/get-user';
 import { z } from 'zod';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -7,8 +7,8 @@ import { writeFile, mkdir, access } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { v4 as uuidv4 } from 'uuid';
-import { db } from '@/db';
-import { apps } from '@/db/schema';
+import { db } from '@/lib/db';
+import { appsTable } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
 const execAsync = promisify(exec);
@@ -25,8 +25,8 @@ export async function POST(
   { params }: { params: { appId: string } }
 ) {
   try {
-    const { userId } = auth();
-    if (!userId) {
+    const user = await getUser();
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -48,8 +48,8 @@ export async function POST(
     const appId = params.appId;
 
     // Verify app exists and user has access
-    const app = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+    const app = await db.query.appsTable.findFirst({
+      where: eq(appsTable.id, appId),
     });
 
     if (!app) {
@@ -70,7 +70,7 @@ export async function POST(
     // Create or update app.json
     const appJson = {
       expo: {
-        ...JSON.parse(app.config || '{}'),
+        ...((app.expoConfig as any) || {}),
         updates: {
           url: `${process.env.NEXT_PUBLIC_APP_URL}/api/apps/${appId}/updates`,
         },

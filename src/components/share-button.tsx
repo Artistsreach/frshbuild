@@ -251,7 +251,7 @@ export function ShareButton({
                     onClick={() => setShowAppStoreModal(true)}
                   >
                     <Store className="h-4 w-4" />
-                    Publish to App Store
+                    Deploy to App Store
                   </Button>
                 )}
               </div>
@@ -313,7 +313,7 @@ export function ShareButton({
                   onClick={() => setShowAppStoreModal(true)}
                 >
                   <Store className="h-4 w-4" />
-                  Publish to App Store
+                  Deploy to App Store
                 </Button>
               )}
             </div>

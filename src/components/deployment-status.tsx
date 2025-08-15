@@ -20,7 +20,7 @@ interface DeploymentStatusProps {
   deployment: DeploymentWithApp;
   className?: string;
   showAppName?: boolean;
-  onRefresh?: () => void;
+  onRefresh?: () => void | Promise<void>;
 }
 
 export function DeploymentStatus({
@@ -61,7 +61,7 @@ export function DeploymentStatus({
   const handleRefresh = () => {
     setIsRefreshing(true);
     if (onRefresh) {
-      onRefresh().finally(() => setIsRefreshing(false));
+      Promise.resolve(onRefresh()).finally(() => setIsRefreshing(false));
     } else {
       router.refresh();
       setTimeout(() => setIsRefreshing(false), 1000);
@@ -82,7 +82,7 @@ export function DeploymentStatus({
       },
       completed: {
         label: 'Completed',
-        variant: 'success' as const,
+        variant: 'secondary' as const,
         icon: <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />,
       },
       failed: {
@@ -182,15 +182,14 @@ export function DeploymentStatus({
             ))}
           </div>
         )}
-        
-        {deployment.metadata && Object.keys(deployment.metadata).length > 0 && (
+        {Boolean(deployment.metadata) && Object.keys(deployment.metadata as Record<string, unknown>).length > 0 ? (
           <div className="mt-3 text-xs text-muted-foreground">
             <div className="font-medium mb-1">Details:</div>
             <pre className="bg-muted p-2 rounded overflow-x-auto">
-              {JSON.stringify(deployment.metadata, null, 2)}
+              {JSON.stringify(deployment.metadata as Record<string, unknown>, null, 2)}
             </pre>
           </div>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );

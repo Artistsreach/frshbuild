@@ -14,7 +14,7 @@ export function ToolMessage({
     return (
       <ToolBlock
         name="listing directory"
-        argsText={toolInvocation.input?.path?.split("/").slice(2).join("/")}
+        argsText={(toolInvocation as any).input?.path?.split("/").slice(2).join("/")}
         toolInvocation={toolInvocation}
       />
     );
@@ -24,7 +24,7 @@ export function ToolMessage({
     return (
       <ToolBlock
         name="read file"
-        argsText={toolInvocation.input?.path?.split("/").slice(2).join("/")}
+        argsText={(toolInvocation as any).input?.path?.split("/").slice(2).join("/")}
         toolInvocation={toolInvocation}
       />
     );
@@ -43,7 +43,7 @@ export function ToolMessage({
       <ToolBlock
         name="exec"
         toolInvocation={toolInvocation}
-        argsText={toolInvocation.input?.command}
+        argsText={(toolInvocation as any).input?.command}
       />
     );
   }
@@ -53,7 +53,7 @@ export function ToolMessage({
       <ToolBlock
         name="create directory"
         toolInvocation={toolInvocation}
-        argsText={toolInvocation.input?.path?.split("/").slice(2).join("/")}
+        argsText={(toolInvocation as any).input?.path?.split("/").slice(2).join("/")}
       />
     );
   }
@@ -62,7 +62,7 @@ export function ToolMessage({
     return (
       <ToolBlock name="update todo list" toolInvocation={toolInvocation}>
         <div className="grid gap-2">
-          {toolInvocation.input?.items?.map?.(
+          {(toolInvocation as any).input?.items?.map?.(
             (
               item: { description: string; completed: boolean },
               index: number
@@ -147,18 +147,16 @@ function DefaultContentRenderer(props: {
 function EditFileTool({
   toolInvocation,
 }: {
-  toolInvocation: UIMessage["parts"][number] & {
-    type: "tool-edit_file";
-  };
+  toolInvocation: UIMessage["parts"][number];
 }) {
   return (
     <ToolBlock
       name="edit file"
-      argsText={toolInvocation.input?.path?.split("/").slice(2).join("/")}
+      argsText={(toolInvocation as any).input?.path?.split("/").slice(2).join("/")}
       toolInvocation={toolInvocation}
     >
       <div className="grid gap-2">
-        {toolInvocation.input?.edits?.map?.(
+        {(toolInvocation as any).input?.edits?.map?.(
           (edit: { newText: string; oldText: string }, index: number) =>
             (edit.oldText || edit.newText) && (
               <CodeBlock key={index} className="overflow-scroll py-2">
@@ -212,21 +210,19 @@ function EditFileTool({
 function WriteFileTool({
   toolInvocation,
 }: {
-  toolInvocation: UIMessage["parts"][number] & {
-    type: "tool-write_file";
-  };
+  toolInvocation: UIMessage["parts"][number];
 }) {
   return (
     <ToolBlock
       name="write file"
-      argsText={toolInvocation.input?.path?.split("/").slice(2).join("/")}
+      argsText={(toolInvocation as any).input?.path?.split("/").slice(2).join("/")}
       toolInvocation={toolInvocation}
     >
-      {toolInvocation.input?.content && (
+      {(toolInvocation as any).input?.content && (
         <CodeBlock className="overflow-scroll sticky bottom-0">
           <CodeBlockCode
             code={
-              toolInvocation.input?.content
+              (toolInvocation as any).input?.content
                 ?.split("\n")
                 .slice(0, 5)
                 .join("\n") ?? ""
@@ -234,9 +230,9 @@ function WriteFileTool({
             language={"tsx"}
             className="col-start-1 col-end-1 row-start-1 row-end-1 overflow-visible [&_code]:bg-green-200! bg-green-200 dark:[&_*]:!text-gray-900 dark:[&>pre>code_*]:!text-gray-900"
           />
-          {toolInvocation.input?.content?.split("\n").length > 5 && (
+          {(toolInvocation as any).input?.content?.split("\n").length > 5 && (
             <div className="text-green-700 px-4 text-xs pb-2 font-mono">
-              +{toolInvocation.input?.content?.split("\n").length - 5} more
+              +{(toolInvocation as any).input?.content?.split("\n").length - 5} more
             </div>
           )}
         </CodeBlock>
@@ -246,9 +242,7 @@ function WriteFileTool({
 }
 
 function ToolBlock(props: {
-  toolInvocation?: UIMessage["parts"][number] & {
-    type: "tool-";
-  };
+  toolInvocation?: UIMessage["parts"][number];
   name: string;
   argsText?: string;
   children?: React.ReactNode;
@@ -266,7 +260,7 @@ function ToolBlock(props: {
           // )}
         >
           <div className="grid translate-y-[1px]">
-            {props.toolInvocation?.state !== "output-available" && (
+            {(props.toolInvocation as any)?.state !== "output-available" && (
               <div
                 className={cn(
                   "border border-black w-2 h-2 rounded-full inline-block col-start-1 col-end-1 row-start-1 row-end-1",
@@ -278,10 +272,10 @@ function ToolBlock(props: {
             <div
               className={cn(
                 "border w-2 h-2 rounded-full inline-block col-start-1 col-end-1 row-start-1 row-end-1",
-                props.toolInvocation?.state === "output-available" &&
-                  props.toolInvocation.result?.isError
+                (props.toolInvocation as any)?.state === "output-available" &&
+                  (props.toolInvocation as any).output?.isError
                   ? "bg-red-500 border-red-500"
-                  : props.toolInvocation?.state === "output-available"
+                  : (props.toolInvocation as any)?.state === "output-available"
                     ? "border-gray-400 bg-gray-400"
                     : "border-black bg-black"
               )}
@@ -292,9 +286,9 @@ function ToolBlock(props: {
         </div>
       </div>
       {(props.children && <div className="mb-2">{props.children}</div>) ||
-        (props.toolInvocation?.state === "output-available" &&
-          props.toolInvocation.output?.isError &&
-          props.toolInvocation.output?.content?.map(
+        ((props.toolInvocation as any)?.state === "output-available" &&
+          (props.toolInvocation as any).output?.isError &&
+          (props.toolInvocation as any).output?.content?.map(
             (content: { type: "text"; text: string }, i: number) => (
               <CodeBlock key={i} className="overflow-scroll py-2">
                 <CodeBlockCode
