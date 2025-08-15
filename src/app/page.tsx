@@ -168,12 +168,7 @@ function HomePageContent() {
                     className="relative z-10 border-none bg-transparent shadow-none transition-all duration-200 ease-in-out "
                   >
                     <div id="home-prompt-field">
-                      <PromptInputTextareaWithTypingAnimation
-                        id="home-prompt-input"
-                        name="app_description"
-                        autoComplete="on"
-                        data-ff-role="prompt"
-                      />
+                      <PromptInputTextareaWithTypingAnimation />
                     </div>
                     <PromptInputActions>
                       <div id="home-build-button">
