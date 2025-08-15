@@ -59,6 +59,8 @@ export async function createApp({
         gitRepo: repo.repoId,
         name: initialMessage,
         is_public: false,
+        // Save the selected framework/template for downstream UI logic (e.g., Expo detection)
+        baseId: templateId,
       })
       .returning();
 

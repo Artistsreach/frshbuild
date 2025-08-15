@@ -14,11 +14,16 @@ const submitSchema = z.object({
   platform: z.enum(['android', 'ios', 'all']),
   buildId: z.string().optional(),
   track: z.enum(['production', 'beta', 'alpha', 'internal']).default('internal'),
+  // Optional credentials
+  expoToken: z.string().optional(),
+  iosAppSpecificPassword: z.string().optional(),
+  iosAscApiKeyJson: z.string().optional(),
+  androidServiceAccountJson: z.string().optional(),
 });
 
 export async function POST(
   request: Request,
-  { params }: { params: { appId: string } }
+  ctx: { params: Promise<{ appId: string }> }
 ) {
   try {
     const user = await getUser();
@@ -40,8 +45,8 @@ export async function POST(
       );
     }
 
-    const { platform, buildId, track } = validation.data;
-    const appId = params.appId;
+    const { platform, buildId, track, expoToken, iosAppSpecificPassword, iosAscApiKeyJson, androidServiceAccountJson } = validation.data;
+    const { appId } = await ctx.params;
 
     // Verify app exists and user has access
     const app = await db.query.appsTable.findFirst({
@@ -70,6 +75,7 @@ export async function POST(
             platform,
             target: 'production',
             message: `Build for ${track} submission`,
+            expoToken,
           }),
         }
       );
@@ -95,6 +101,10 @@ export async function POST(
       env: {
         ...process.env,
         EAS_NO_VCS: '1',
+        ...(expoToken ? { EXPO_TOKEN: expoToken } : {}),
+        ...(iosAppSpecificPassword ? { EXPO_APPLE_APP_SPECIFIC_PASSWORD: iosAppSpecificPassword } : {}),
+        ...(iosAscApiKeyJson ? { EXPO_APPLE_APP_STORE_CONNECT_API_KEY: iosAscApiKeyJson } : {}),
+        ...(androidServiceAccountJson ? { GOOGLE_SERVICE_ACCOUNT_KEY: androidServiceAccountJson } : {}),
       },
     });
 
@@ -132,7 +142,7 @@ export async function POST(
 // Webhook handler for EAS submission status updates
 export async function PATCH(
   request: Request,
-  { params }: { params: { appId: string } }
+  ctx: { params: Promise<{ appId: string }> }
 ) {
   try {
     // Verify webhook secret

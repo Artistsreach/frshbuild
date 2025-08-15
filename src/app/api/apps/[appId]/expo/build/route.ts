@@ -18,11 +18,13 @@ const buildSchema = z.object({
   platform: z.enum(['android', 'ios', 'all']),
   target: z.enum(['development', 'preview', 'production']),
   message: z.string().optional(),
+  // Optional runtime credentials
+  expoToken: z.string().optional(),
 });
 
 export async function POST(
   request: Request,
-  { params }: { params: { appId: string } }
+  ctx: { params: Promise<{ appId: string }> }
 ) {
   try {
     const user = await getUser();
@@ -44,8 +46,8 @@ export async function POST(
       );
     }
 
-    const { platform, target, message } = validation.data;
-    const appId = params.appId;
+    const { platform, target, message, expoToken } = validation.data;
+    const { appId } = await ctx.params;
 
     // Verify app exists and user has access
     const app = await db.query.appsTable.findFirst({
@@ -101,6 +103,7 @@ export async function POST(
         ...process.env,
         EAS_NO_VCS: '1',
         EAS_PROJECT_ROOT: tempDir,
+        ...(expoToken ? { EXPO_TOKEN: expoToken } : {}),
       },
     });
 
@@ -137,7 +140,7 @@ export async function POST(
 // Webhook handler for EAS build status updates
 export async function PATCH(
   request: Request,
-  { params }: { params: { appId: string } }
+  ctx: { params: Promise<{ appId: string }> }
 ) {
   try {
     // Verify webhook secret

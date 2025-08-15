@@ -113,7 +113,7 @@ export function AppCard({
       </div>
 
       <div className="absolute bottom-4 right-4 flex gap-2">
-        {deletable && !stripeProductId && (
+        {deletable && isPublic && !stripeProductId && (
           <CrowdfundModal appName={name} appId={id} onSuccess={onDelete} />
         )}
         {stripeProductId && isPublic && source === "community" && (

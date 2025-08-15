@@ -24,6 +24,9 @@ import {
 import { toast } from "sonner";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
 
 type DeploymentStatus = {
   id: string;
@@ -55,6 +58,11 @@ export function AppStoreDeployModal({
   const [deployments, setDeployments] = useState<DeploymentStatus[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [overallProgress, setOverallProgress] = useState(0);
+  // Credentials (optional)
+  const [expoToken, setExpoToken] = useState("");
+  const [iosAppSpecificPassword, setIosAppSpecificPassword] = useState("");
+  const [iosAscApiKeyJson, setIosAscApiKeyJson] = useState("");
+  const [androidServiceAccountJson, setAndroidServiceAccountJson] = useState("");
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -99,6 +107,7 @@ export function AppStoreDeployModal({
               platform: deployment.platform,
               target: 'production',
               message: `App Store build for ${deployment.platform}`,
+              expoToken: expoToken || undefined,
             }),
           });
 
@@ -128,6 +137,10 @@ export function AppStoreDeployModal({
               platform: deployment.platform,
               buildId,
               track: 'production',
+              expoToken: expoToken || undefined,
+              iosAppSpecificPassword: iosAppSpecificPassword || undefined,
+              iosAscApiKeyJson: iosAscApiKeyJson || undefined,
+              androidServiceAccountJson: androidServiceAccountJson || undefined,
             }),
           });
 
@@ -234,7 +247,7 @@ export function AppStoreDeployModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Store className="h-5 w-5" />
-            Publish to App Store
+            Deploy to App Store
           </DialogTitle>
           <DialogDescription>
             Build and submit {appName} to the Apple App Store and Google Play Store.
@@ -271,6 +284,58 @@ export function AppStoreDeployModal({
                 </div>
               </Button>
             </div>
+          </div>
+
+          {/* Credentials */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium">Credentials</h3>
+            <div className="space-y-2">
+              <Label htmlFor="expo-token">Expo Token (EXPO_TOKEN)</Label>
+              <Input
+                id="expo-token"
+                type="password"
+                placeholder="e.g. expotoken_xxxxxxxxxxxxxxxxx"
+                value={expoToken}
+                onChange={(e) => setExpoToken(e.target.value)}
+                disabled={isDeploying}
+              />
+            </div>
+            {selectedPlatforms.includes('ios') && (
+              <div className="space-y-2">
+                <Label htmlFor="ios-app-password">iOS App-Specific Password</Label>
+                <Input
+                  id="ios-app-password"
+                  type="password"
+                  placeholder="e.g. abcd-efgh-ijkl-mnop"
+                  value={iosAppSpecificPassword}
+                  onChange={(e) => setIosAppSpecificPassword(e.target.value)}
+                  disabled={isDeploying}
+                />
+                <Label htmlFor="ios-asc-json">App Store Connect API Key (JSON)</Label>
+                <Textarea
+                  id="ios-asc-json"
+                  placeholder='{"issuerId":"...","keyId":"...","key":"-----BEGIN PRIVATE KEY-----\\n..."}'
+                  value={iosAscApiKeyJson}
+                  onChange={(e) => setIosAscApiKeyJson(e.target.value)}
+                  disabled={isDeploying}
+                  rows={4}
+                />
+                
+              </div>
+            )}
+            {selectedPlatforms.includes('android') && (
+              <div className="space-y-2">
+                <Label htmlFor="android-service-account">Android Service Account JSON</Label>
+                <Textarea
+                  id="android-service-account"
+                  placeholder='{"type":"service_account","project_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\\n..."}'
+                  value={androidServiceAccountJson}
+                  onChange={(e) => setAndroidServiceAccountJson(e.target.value)}
+                  disabled={isDeploying}
+                  rows={4}
+                />
+              </div>
+            )}
           </div>
 
           {/* Overall Progress */}
@@ -382,7 +447,7 @@ export function AppStoreDeployModal({
               ) : (
                 <>
                   <Store className="mr-2 h-4 w-4" />
-                  Publish to App Store
+                  Deploy to App Store
                 </>
               )}
             </Button>
