@@ -107,8 +107,11 @@ function PromptInputTextarea({
   className,
   onKeyDown,
   disableAutosize = false,
+  id,
+  name,
+  autoComplete,
   ...props
-}: PromptInputTextareaProps) {
+}: PromptInputTextareaProps & { id?: string; name?: string; autoComplete?: string }) {
   const { value, setValue, maxHeight, onSubmit, disabled } = usePromptInput();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -137,6 +140,9 @@ function PromptInputTextarea({
 
   return (
     <Textarea
+      id={id}
+      name={name}
+      autoComplete={autoComplete}
       ref={textareaRef}
       value={value}
       onChange={(e) => setValue(e.target.value)}

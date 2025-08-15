@@ -128,11 +128,16 @@ function HomePageContent() {
                     className="relative z-10 border-none bg-transparent shadow-none transition-all duration-200 ease-in-out "
                   >
                     <div id="home-prompt-field">
-                      <PromptInputTextareaWithTypingAnimation />
+                      <PromptInputTextareaWithTypingAnimation
+                        id="home-prompt-input"
+                        name="app_description"
+                        autoComplete="on"
+                      />
                     </div>
                     <PromptInputActions>
                       <div id="home-build-button">
                         <Button
+                          type="button"
                           onClick={handleSubmit}
                           disabled={isLoading || !prompt.trim()}
                           className="bg-blue-500 hover:bg-blue-600 text-white rounded-full px-6 py-2 text-sm font-semibold"
