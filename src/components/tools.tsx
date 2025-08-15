@@ -179,7 +179,7 @@ function EditFileTool({
                     .slice(0, 5)
                     .join("\n")}
                   language={"tsx"}
-                  className="col-start-1 col-end-1 row-start-1 row-end-1 overflow-visible [&>pre]:py-0! [&_code]:bg-green-200! bg-green-200"
+                  className="col-start-1 col-end-1 row-start-1 row-end-1 overflow-visible [&>pre]:py-0! [&_code]:bg-green-200! bg-green-200 dark:[&_*]:!text-gray-900 dark:[&>pre>code_*]:!text-gray-900"
                 />
                 {edit.newText?.split("\n").length > 5 && (
                   <div className="text-green-700 px-4 text-xs font-mono">
@@ -232,7 +232,7 @@ function WriteFileTool({
                 .join("\n") ?? ""
             }
             language={"tsx"}
-            className="col-start-1 col-end-1 row-start-1 row-end-1 overflow-visible [&_code]:bg-green-200! bg-green-200"
+            className="col-start-1 col-end-1 row-start-1 row-end-1 overflow-visible [&_code]:bg-green-200! bg-green-200 dark:[&_*]:!text-gray-900 dark:[&>pre>code_*]:!text-gray-900"
           />
           {toolInvocation.input?.content?.split("\n").length > 5 && (
             <div className="text-green-700 px-4 text-xs pb-2 font-mono">

@@ -19,6 +19,7 @@ import { CrowdfundModal } from "./crowdfund-modal";
 import { ShareButton } from "./share-button";
 import { TierSelectionModal } from "./tier-selection-modal";
 import { PurchaseModal } from "./purchase-modal";
+import { SupabaseConnectModal } from "./supabase-connect-modal";
 
 export function TopBar({
   appName,
@@ -50,6 +51,7 @@ export function TopBar({
   const [modalOpen, setModalOpen] = useState(false);
   const [tierModalOpen, setTierModalOpen] = useState(false);
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
+  const [supabaseModalOpen, setSupabaseModalOpen] = useState(false);
 
   const { data: credits } = useQuery({
     queryKey: ["credits"],
@@ -94,7 +96,7 @@ export function TopBar({
           </>
         )}
         {children}
-        {isPublic && !isCrowdfunded && (
+        {isOwner && isPublic && !isCrowdfunded && (
           <CrowdfundModal appName={appName} appId={appId} />
         )}
         {/* Subscribe button logic, similar to AppCard */}
@@ -108,6 +110,24 @@ export function TopBar({
               productId={stripeProductId}
               open={tierModalOpen}
               onOpenChange={setTierModalOpen}
+              appId={appId}
+            />
+          </>
+        )}
+        {isOwner && (
+          <>
+            <Button size="sm" variant="outline" onClick={() => setSupabaseModalOpen(true)}>
+              <Image
+                src="https://inrveiaulksfmzsbyzqj.supabase.co/storage/v1/object/public/images/IMG_7042.png"
+                alt="Connect Supabase"
+                width={16}
+                height={16}
+                className="h-4 w-4"
+              />
+            </Button>
+            <SupabaseConnectModal
+              open={supabaseModalOpen}
+              onOpenChange={setSupabaseModalOpen}
             />
           </>
         )}

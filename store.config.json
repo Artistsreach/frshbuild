@@ -1,0 +1,31 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "info": {
+      "en-US": {
+        "title": "FreshChef",
+        "subtitle": "Your personal cooking assistant",
+        "description": "FreshChef helps you discover and create delicious recipes based on your preferences and available ingredients. Get personalized meal suggestions, save your favorite recipes, and never wonder what to cook again.",
+        "keywords": ["recipes", "cooking", "meal planning", "food", "chef", "meal prep"],
+        "marketingUrl": "https://freshchef.app",
+        "supportUrl": "https://freshchef.app/support",
+        "privacyPolicyUrl": "https://freshchef.app/privacy"
+      }
+    },
+    "app": {
+      "bundleId": "com.freshchef.app",
+      "primaryCategory": "Food & Drink",
+      "secondaryCategory": "Lifestyle"
+    },
+    "contact": {
+      "email": "support@freshchef.app",
+      "phone": "+1 (555) 123-4567",
+      "firstName": "FreshChef",
+      "lastName": "Support"
+    },
+    "release": {
+      "phasedRelease": true,
+      "automaticRelease": true
+    }
+  }
+}
