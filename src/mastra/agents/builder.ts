@@ -34,7 +34,7 @@ export const memory = new Memory({
 
 export const builderAgent = new Agent({
   name: "BuilderAgent",
-  model: openai("gpt-4o"),
+  model: openai("gpt-5-main"),
   instructions: SYSTEM_MESSAGE,
   memory,
   tools: {
@@ -65,7 +65,8 @@ export const builderAgent = new Agent({
       outputSchema: z.object({
         success: z.boolean(),
       }),
-      execute: async ({ writer }: { writer?: { write: (chunk: any) => void } }) => {
+      execute: async (context: ToolExecutionContext<typeof this> | any) => {
+        const writer = context?.writer as { write: (chunk: any) => void } | undefined;
         if (writer) {
           writer.write({
             type: "update-todo-list",

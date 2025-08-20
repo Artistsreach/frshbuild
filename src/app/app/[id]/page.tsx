@@ -16,7 +16,6 @@ import { DeploymentHistory } from "@/components/deployment-history";
 import { DeploymentStatus } from "@/components/deployment-status";
 import { ExpoDeployModal } from "@/components/expo-deploy-modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getDeployments } from "@/actions/get-deployments";
 
 export default async function AppPage({
   params,
