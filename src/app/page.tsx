@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { PromptInput, PromptInputActions } from "@/components/ui/prompt-input";
 import { FrameworkSelector } from "@/components/framework-selector";
 import Image from "next/image";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ExampleButton } from "@/components/ExampleButton";
 import { UserButton } from "@stackframe/stack";
@@ -27,6 +27,7 @@ function HomePageContent() {
   const [fundingLoading, setFundingLoading] = useState(false);
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
   const router = useRouter();
+  const submittedRef = useRef(false);
 
   const { data: credits } = useQuery({
     queryKey: ["credits"],
@@ -40,6 +41,8 @@ function HomePageContent() {
   });
 
   const handleSubmit = useCallback(async () => {
+    if (submittedRef.current) return;
+    submittedRef.current = true;
     setIsLoading(true);
 
     // window.location = `http://localhost:3000/app/new?message=${encodeURIComponent(prompt)}&template=${framework}`;
@@ -60,7 +63,7 @@ function HomePageContent() {
       setPrompt(p);
       // Wait for React state -> button disabled prop to update
       setTimeout(() => {
-        if (shouldAutoBuild) handleSubmit();
+        if (shouldAutoBuild && !submittedRef.current) handleSubmit();
       }, 0);
     };
 
@@ -180,7 +183,7 @@ function HomePageContent() {
                         <Button
                           type="button"
                           onClick={handleSubmit}
-                          disabled={isLoading || !prompt.trim()}
+                          disabled={isLoading || submittedRef.current || !prompt.trim()}
                           className="bg-blue-500 hover:bg-blue-600 text-white rounded-full px-6 py-2 text-sm font-semibold"
                           data-ff-role="build"
                         >
