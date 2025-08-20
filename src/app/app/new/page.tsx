@@ -33,16 +33,15 @@ export default async function NewAppRedirectPage({
     );
   }
 
-  let message: string | undefined;
-  if (Array.isArray(search.message)) {
-    message = search.message[0];
-  } else {
-    message = search.message;
-  }
+  // Extract message safely; do not double-decode here
+  const rawMessage = Array.isArray(search.message)
+    ? (search.message[0] as string | undefined)
+    : (search.message as string | undefined);
+  const message = rawMessage ?? undefined;
 
   const { id } = await createApp({
-    initialMessage: decodeURIComponent(message),
-    templateId: search.template as string,
+    initialMessage: message,
+    templateId: (search.template as string) || "nextjs",
   });
 
   redirect(`/app/${id}`);

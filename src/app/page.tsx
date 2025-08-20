@@ -40,15 +40,15 @@ function HomePageContent() {
     queryFn: () => getUser(),
   });
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async (overridePrompt?: string) => {
     if (submittedRef.current) return;
+    const usedPrompt = (overridePrompt ?? prompt) || "";
+    if (!usedPrompt.trim()) return;
     submittedRef.current = true;
     setIsLoading(true);
 
-    // window.location = `http://localhost:3000/app/new?message=${encodeURIComponent(prompt)}&template=${framework}`;
-
     router.push(
-      `/app/new?message=${encodeURIComponent(prompt)}&template=${framework}`
+      `/app/new?message=${encodeURIComponent(usedPrompt)}&template=${framework}`
     );
   }, [prompt, framework, router]);
 
@@ -63,7 +63,7 @@ function HomePageContent() {
       setPrompt(p);
       // Wait for React state -> button disabled prop to update
       setTimeout(() => {
-        if (shouldAutoBuild && !submittedRef.current) handleSubmit();
+        if (shouldAutoBuild && !submittedRef.current) handleSubmit(p);
       }, 0);
     };
 
@@ -167,7 +167,7 @@ function HomePageContent() {
                     isLoading={isLoading}
                     value={prompt}
                     onValueChange={setPrompt}
-                    onSubmit={handleSubmit}
+                    onSubmit={() => handleSubmit()}
                     className="relative z-10 border-none bg-transparent shadow-none transition-all duration-200 ease-in-out "
                   >
                     <div id="home-prompt-field">
@@ -182,7 +182,7 @@ function HomePageContent() {
                       <div id="home-build-button">
                         <Button
                           type="button"
-                          onClick={handleSubmit}
+                          onClick={() => handleSubmit()}
                           disabled={isLoading || submittedRef.current || !prompt.trim()}
                           className="bg-blue-500 hover:bg-blue-600 text-white rounded-full px-6 py-2 text-sm font-semibold"
                           data-ff-role="build"
