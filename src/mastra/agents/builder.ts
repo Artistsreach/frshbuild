@@ -65,8 +65,11 @@ export const builderAgent = new Agent({
       outputSchema: z.object({
         success: z.boolean(),
       }),
-      execute: async (context: ToolExecutionContext<typeof this> | any) => {
-        const writer = context?.writer as { write: (chunk: any) => void } | undefined;
+      execute: async (context: ToolExecutionContext<any>) => {
+        const writer =
+          context && (context as any) && "writer" in (context as any)
+            ? ((context as any).writer as { write: (chunk: any) => void })
+            : undefined;
         if (writer) {
           writer.write({
             type: "update-todo-list",
