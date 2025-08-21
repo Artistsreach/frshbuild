@@ -34,7 +34,7 @@ export const memory = new Memory({
 
 export const builderAgent = new Agent({
   name: "BuilderAgent",
-  model: openai("gpt-4o"),
+  model: openai("gpt-5-2025-08-07"),
   instructions: SYSTEM_MESSAGE,
   memory,
   tools: {
