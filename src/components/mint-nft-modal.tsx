@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Input } from "./ui/input";
@@ -24,6 +24,20 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [includeImage, setIncludeImage] = useState(true);
   const effectiveProjectId = projectId || (process.env.NEXT_PUBLIC_MINTOLOGY_PROJECT_ID as string) || "";
+
+  // Auto-capture when modal opens
+  useEffect(() => {
+    if (open) {
+      // slight delay to ensure modal is rendered
+      const t = setTimeout(() => {
+        // do not override if user already captured in this session
+        if (!screenshot && !capturing) {
+          captureScreenshot();
+        }
+      }, 50);
+      return () => clearTimeout(t);
+    }
+  }, [open]);
 
   async function captureScreenshot() {
     setCapturing(true);
