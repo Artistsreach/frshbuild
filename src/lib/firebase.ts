@@ -28,8 +28,8 @@ export function getFirebaseApp(): FirebaseApp | undefined {
 
   // Determine how to pass storage configuration:
   // - If env starts with gs:// -> treat as explicit bucket URL; do NOT pass storageBucket into initializeApp.
-  // - If env ends with firebasestorage.app -> convert to <name>.appspot.com.
-  // - If env has no dot -> treat as raw bucket name (e.g., build25) and use getStorage(app, `gs://<name>`).
+  // - If env ends with firebasestorage.app -> convert to <name>.firebasestorage.app.
+  // - If env has no dot -> treat as raw bucket name (e.g., fresh25) and use getStorage(app, `gs://<name>`).
   let storageBucketOption: string | undefined = undefined; // for initializeApp
   let storageBucketUrl: string | undefined = undefined; // for getStorage(app, url)
 
@@ -37,15 +37,15 @@ export function getFirebaseApp(): FirebaseApp | undefined {
   if (raw.startsWith("gs://")) {
     storageBucketUrl = raw;
   } else if (raw.endsWith("firebasestorage.app")) {
-    // Convert domain-like bucket to appspot.com host
+    // Convert domain-like bucket to firebasestorage.app host
     const parts = raw.split(".");
     const name = parts[0];
-    storageBucketOption = `${name}.appspot.com`;
+    storageBucketOption = `${name}.firebasestorage.app`;
   } else if (!raw.includes(".")) {
-    // Looks like a bare bucket name (e.g., build25)
+    // Looks like a bare bucket name (e.g., fresh25)
     storageBucketUrl = `gs://${raw}`;
   } else {
-    // Assume it's a host-style bucket (e.g., build25.appspot.com)
+    // Assume it's a host-style bucket (e.g., fresh25.firebasestorage.app)
     storageBucketOption = raw;
   }
 
