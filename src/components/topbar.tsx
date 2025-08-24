@@ -20,6 +20,7 @@ import { ShareButton } from "./share-button";
 import { TierSelectionModal } from "./tier-selection-modal";
 import { PurchaseModal } from "./purchase-modal";
 import { SupabaseConnectModal } from "./supabase-connect-modal";
+import { MintNftModal } from "./mint-nft-modal";
 
 export function TopBar({
   appName,
@@ -96,6 +97,9 @@ export function TopBar({
           </>
         )}
         {children}
+        {isPublic && (
+          <MintNftModal appName={appName} appId={appId} />
+        )}
         {/* Crowdfund moved to WebView right controls; hide here */}
         {/* Subscribe button logic, similar to AppCard */}
         {stripeProductId && isPublic && !isOwner && (

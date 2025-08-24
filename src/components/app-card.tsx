@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 import { Button } from "./ui/button";
 import { CrowdfundModal } from "./crowdfund-modal";
+import { MintNftModal } from "./mint-nft-modal";
 import { EditAppNameModal } from "./edit-app-name-modal";
 import { StatsModal } from "./stats-modal";
 import { TierSelectionModal } from "./tier-selection-modal";
@@ -115,6 +116,9 @@ export function AppCard({
       <div className="absolute bottom-4 right-4 flex gap-2">
         {deletable && isPublic && !stripeProductId && (
           <CrowdfundModal appName={name} appId={id} onSuccess={onDelete} />
+        )}
+        {isPublic && (
+          <MintNftModal appName={name} appId={id} />
         )}
         {stripeProductId && isPublic && source === "community" && (
           <Button size="sm" onClick={() => setIsTierModalOpen(true)}>
