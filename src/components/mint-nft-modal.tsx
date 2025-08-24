@@ -24,9 +24,9 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
   );
   const [submitting, setSubmitting] = useState(false);
   const [capturing, setCapturing] = useState(false);
-  const [screenshot, setScreenshot] = useState<string | null>(null);
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [includeImage, setIncludeImage] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const effectiveProjectId = projectId || (process.env.NEXT_PUBLIC_MINTOLOGY_PROJECT_ID as string) || "";
 
   // Removed auto-capture on open to avoid the modal overlay in screenshots.
@@ -78,7 +78,6 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
         toast.error("Failed to capture screenshot. Make sure the preview is visible on this page.");
         return;
       }
-      setScreenshot(dataUrl);
       // Save as current app thumbnail as well
       try {
         await fetch(`/api/apps/${appId}/thumbnail`, {
@@ -88,6 +87,7 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
         });
       } catch {}
       // Upload to Firebase Storage and store public URL
+      setUploading(true);
       try {
         const storage = getFirebaseStorage();
         if (!storage) {
@@ -103,7 +103,9 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
         }
       } catch (e) {
         console.debug("upload failed", e);
-        // non-blocking
+        toast.error("Screenshot upload failed");
+      } finally {
+        setUploading(false);
       }
       toast.success("Screenshot captured");
     } finally {
@@ -124,10 +126,10 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
         }
 
       // If requested, embed screenshot as image if not already provided
-      if (includeImage && (screenshotUrl || screenshot)) {
+      if (includeImage && screenshotUrl) {
         if (!metadata) metadata = {};
         if (!metadata.image) {
-          metadata.image = screenshotUrl || screenshot;
+          metadata.image = screenshotUrl;
         }
       }
       }
@@ -201,14 +203,14 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
                   <input type="checkbox" checked={includeImage} onChange={(e) => setIncludeImage(e.target.checked)} />
                   Include in metadata.image
                 </label>
-                <Button size="sm" variant="outline" onClick={captureScreenshot} disabled={capturing}>
-                  {capturing ? "Capturing..." : "Capture screenshot"}
+                <Button size="sm" variant="outline" onClick={captureScreenshot} disabled={capturing || uploading}>
+                  {capturing ? "Capturing..." : uploading ? "Uploading..." : "Capture screenshot"}
                 </Button>
               </div>
             </div>
-            {(screenshotUrl || screenshot) ? (
+            {screenshotUrl ? (
               <div className="border rounded p-2 space-y-2">
-                <img src={screenshotUrl || screenshot || undefined} alt="Screenshot preview" className="max-h-48 object-contain mx-auto" />
+                <img src={screenshotUrl} alt="Screenshot preview" className="max-h-48 object-contain mx-auto" />
                 {screenshotUrl && (
                   <div className="text-xs text-muted-foreground break-all text-center">
                     Uploaded URL: <a className="underline" href={screenshotUrl} target="_blank" rel="noreferrer">{screenshotUrl}</a>
