@@ -50,6 +50,7 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
             useCORS: true,
             scale: 1,
             logging: false,
+            foreignObjectRendering: true,
             windowWidth: window.innerWidth || document.documentElement.clientWidth,
             windowHeight: window.innerHeight || document.documentElement.clientHeight,
         });
@@ -59,6 +60,9 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
       } catch (e) {
         console.debug("full-screen html2canvas failed, will fallback", e);
       }
+
+      // Allow layout to settle before trying fallbacks
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
       // 2) Fallback: use WebView's helper which tries to capture inside the iframe when possible
       if (!dataUrl) {
@@ -82,8 +86,17 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
               useCORS: true,
               scale: 1,
               logging: false,
+              foreignObjectRendering: true,
               width: (el as HTMLElement).clientWidth,
               height: (el as HTMLElement).clientHeight,
+              windowWidth: Math.min(
+                (el as HTMLElement).clientWidth,
+                (el as HTMLElement).scrollWidth || (el as HTMLElement).clientWidth
+              ),
+              windowHeight: Math.min(
+                (el as HTMLElement).clientHeight,
+                (el as HTMLElement).scrollHeight || (el as HTMLElement).clientHeight
+              ),
             });
             if (canvas) {
               dataUrl = canvas.toDataURL("image/webp", 0.9);
@@ -103,6 +116,7 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
             useCORS: true,
             scale: 1,
             logging: false,
+            foreignObjectRendering: true,
             windowWidth: window.innerWidth || document.documentElement.clientWidth,
             windowHeight: window.innerHeight || document.documentElement.clientHeight,
           });

@@ -45,8 +45,15 @@ export default function WebView(props: {
           useCORS: true,
           scale: 0.6,
           logging: false,
-          windowWidth: containerRef.current.clientWidth,
-          windowHeight: containerRef.current.clientHeight,
+          foreignObjectRendering: true,
+          windowWidth: Math.min(
+            containerRef.current.clientWidth,
+            containerRef.current.scrollWidth || containerRef.current.clientWidth
+          ),
+          windowHeight: Math.min(
+            containerRef.current.clientHeight,
+            containerRef.current.scrollHeight || containerRef.current.clientHeight
+          ),
         });
         if (!canvas) return;
         const dataUrl = canvas.toDataURL("image/webp", 0.9);
@@ -111,8 +118,15 @@ export default function WebView(props: {
           useCORS: true,
           scale: 0.8,
           logging: false,
-          windowWidth: containerRef.current.clientWidth,
-          windowHeight: containerRef.current.clientHeight,
+          foreignObjectRendering: true,
+          windowWidth: Math.min(
+            containerRef.current.clientWidth,
+            containerRef.current.scrollWidth || containerRef.current.clientWidth
+          ),
+          windowHeight: Math.min(
+            containerRef.current.clientHeight,
+            containerRef.current.scrollHeight || containerRef.current.clientHeight
+          ),
         });
         if (!canvas) return null;
         return canvas.toDataURL("image/webp", 0.9);
