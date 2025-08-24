@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { mintNft } from "@/actions/mint-nft";
@@ -28,19 +28,7 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
   const [includeImage, setIncludeImage] = useState(true);
   const effectiveProjectId = projectId || (process.env.NEXT_PUBLIC_MINTOLOGY_PROJECT_ID as string) || "";
 
-  // Auto-capture when modal opens
-  useEffect(() => {
-    if (open) {
-      // slight delay to ensure modal is rendered
-      const t = setTimeout(() => {
-        // do not override if user already captured in this session
-        if (!screenshot && !capturing) {
-          captureScreenshot();
-        }
-      }, 50);
-      return () => clearTimeout(t);
-    }
-  }, [open]);
+  // Removed auto-capture on open to avoid the modal overlay in screenshots.
 
   async function captureScreenshot() {
     setCapturing(true);
@@ -61,6 +49,12 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
         });
         if (canvas) dataUrl = canvas.toDataURL("image/webp", 0.9);
       }
+
+  // Capture the page before opening the modal so the modal isn't in the screenshot
+  async function openModalWithPreCapture() {
+    await captureScreenshot();
+    setOpen(true);
+  }
 
       // 2) Fallback: use the helper exposed by WebView (captures preview container)
       if (!dataUrl) {
@@ -181,11 +175,9 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="secondary">
-          Mint as NFT
-        </Button>
-      </DialogTrigger>
+      <Button size="sm" variant="secondary" onClick={openModalWithPreCapture} disabled={capturing}>
+        {capturing ? "Preparing..." : "Mint as NFT"}
+      </Button>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Mint “{appName}” as NFT</DialogTitle>
