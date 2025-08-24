@@ -50,12 +50,6 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
         if (canvas) dataUrl = canvas.toDataURL("image/webp", 0.9);
       }
 
-  // Capture the page before opening the modal so the modal isn't in the screenshot
-  async function openModalWithPreCapture() {
-    await captureScreenshot();
-    setOpen(true);
-  }
-
       // 2) Fallback: use the helper exposed by WebView (captures preview container)
       if (!dataUrl) {
         const fn = (window as any).captureAppScreenshot as undefined | (() => Promise<string | null>);
@@ -171,6 +165,12 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Capture the page before opening the modal so the modal overlay is not included
+  async function openModalWithPreCapture() {
+    await captureScreenshot();
+    setOpen(true);
   }
 
   return (
