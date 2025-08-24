@@ -36,26 +36,19 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
       const h2c = (window as any).html2canvas as undefined | ((node: HTMLElement, opts?: any) => Promise<HTMLCanvasElement | null>);
       let dataUrl: string | null = null;
 
-      // 1) Try capturing the entire application viewport first
+      // 1) Capture ONLY the server window area (preview container)
       if (h2c) {
-        const root = document.body as HTMLElement;
-        // Temporarily disable background-image/box-shadow to avoid parsing unsupported oklch() in gradients/shadows
-        const tmpStyle = document.createElement("style");
-        tmpStyle.setAttribute("data-capture-temp", "true");
-        tmpStyle.textContent = `* { background-image: none !important; box-shadow: none !important; }`;
-        document.head.appendChild(tmpStyle);
-        try {
-          const canvas = await h2c(root, {
+        const el = document.getElementById("app-preview-container");
+        if (el) {
+          const canvas = await h2c(el as HTMLElement, {
             backgroundColor: null,
             useCORS: true,
             scale: 1,
             logging: false,
-            windowWidth: document.documentElement.clientWidth,
-            windowHeight: document.documentElement.clientHeight,
+            windowWidth: (el as HTMLElement).clientWidth,
+            windowHeight: (el as HTMLElement).clientHeight,
           });
           if (canvas) dataUrl = canvas.toDataURL("image/webp", 0.9);
-        } finally {
-          tmpStyle.remove();
         }
       }
 
@@ -67,20 +60,18 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
         }
       }
 
-      // 3) Fallback: capture the preview container directly
+      // 3) Last resort: capture the entire page (may hit oklch issues)
       if (!dataUrl && h2c) {
-        const el = document.getElementById("app-preview-container");
-        if (el) {
-          const canvas = await h2c(el as HTMLElement, {
-            backgroundColor: null,
-            useCORS: true,
-            scale: 0.8,
-            logging: false,
-            windowWidth: (el as HTMLElement).clientWidth,
-            windowHeight: (el as HTMLElement).clientHeight,
-          });
-          if (canvas) dataUrl = canvas.toDataURL("image/webp", 0.9);
-        }
+        const root = document.body as HTMLElement;
+        const canvas = await h2c(root, {
+          backgroundColor: null,
+          useCORS: true,
+          scale: 1,
+          logging: false,
+          windowWidth: document.documentElement.clientWidth,
+          windowHeight: document.documentElement.clientHeight,
+        });
+        if (canvas) dataUrl = canvas.toDataURL("image/webp", 0.9);
       }
       if (!dataUrl) {
         toast.error("Failed to capture screenshot. Make sure the preview is visible on this page.");
