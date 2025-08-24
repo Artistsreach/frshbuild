@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { generateBannerbearImage } from "@/actions/bannerbear-generate";
 import { createPremint } from "@/actions/mintology-premints";
 
-export function MintNftModal({ appId, appName, gitRepo, projectId }: { appId: string; appName: string; gitRepo?: string; projectId?: string }) {
+export function MintNftModal({ appId, appName, gitRepo, projectId, frameworkName, appDescription }: { appId: string; appName: string; gitRepo?: string; projectId?: string; frameworkName?: string; appDescription?: string }) {
   const [open, setOpen] = useState(false);
   const [wallet, setWallet] = useState("");
   const [email, setEmail] = useState("");
@@ -43,13 +43,31 @@ export function MintNftModal({ appId, appName, gitRepo, projectId }: { appId: st
     }
   }, [isModalReady]);
 
+  function resolveFrameworkLogoUrl(framework?: string): string | undefined {
+    const f = (framework || "").toLowerCase();
+    if (f.includes("next")) return "https://seeklogo.com/images/N/next-js-logo-8FCFF51DD2-seeklogo.com.png";
+    if (f.includes("vite")) return "https://logospng.org/download/vite-js/vite-js-4096-logo.png";
+    if (f.includes("expo")) return "https://seeklogo.com/images/E/expo-logo-FE218B5FF2-seeklogo.com.png";
+    return undefined;
+  }
+
   async function preparePremint() {
     setPreparing(true);
     setStep("prepare");
     try {
       // 1) Generate image via Bannerbear
-      const subtitle = gitRepo ? `Repo: ${gitRepo}` : undefined;
-      const bb = await generateBannerbearImage({ name: appName, subtitle, appId, repo: gitRepo });
+      const bb = await generateBannerbearImage({
+        templateId: "qY4mReZp3VAeb97lP8",
+        appName,
+        appDescription,
+        appId,
+        gitRepo,
+        frameworkName,
+        // featuresSummary could be generated asynchronously later; omit if not available
+        featuresSummary: undefined,
+        frameworkLogoUrl: resolveFrameworkLogoUrl(frameworkName),
+        dateCreatedIso: new Date().toISOString(),
+      });
       if (!bb.ok) {
         toast.error(bb.error || "Bannerbear failed");
         return;
