@@ -19,6 +19,7 @@ import { Button } from "./ui/button";
 import { CrowdfundModal } from "./crowdfund-modal";
 import { EditAppNameModal } from "./edit-app-name-modal";
 import { StatsModal } from "./stats-modal";
+import { MintNftModal } from "./mint-nft-modal";
 import { TierSelectionModal } from "./tier-selection-modal";
 
 type AppCardProps = {
@@ -113,6 +114,9 @@ export function AppCard({
       </div>
 
       <div className="absolute bottom-4 right-4 flex gap-2">
+        {source === "user" && (
+          <MintNftModal appName={name} appId={id} />
+        )}
         {deletable && isPublic && !stripeProductId && (
           <CrowdfundModal appName={name} appId={id} onSuccess={onDelete} />
         )}

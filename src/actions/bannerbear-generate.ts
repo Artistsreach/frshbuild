@@ -12,6 +12,7 @@ interface GenerateBannerbearParams {
   logoUrl?: string; // maps to logo
   barCodeData?: string | number; // maps to bar_code
   dateCreatedIso?: string; // maps to date_created
+  projectId?: string; // required if using a Master API Key (full access)
 }
 
 export async function generateBannerbearImage(params: GenerateBannerbearParams) {
@@ -22,6 +23,18 @@ export async function generateBannerbearImage(params: GenerateBannerbearParams) 
   if (!templateId) return { ok: false, error: "BANNERBEAR_TEMPLATE_ID not set" } as const;
 
   try {
+    // Optional: sanity check auth to surface invalid key / wrong project quickly
+    try {
+      const authRes = await fetch("https://api.bannerbear.com/v2/auth", {
+        method: "GET",
+        headers: { Authorization: `Bearer ${apiKey}` },
+        cache: "no-store",
+      });
+      if (!authRes.ok) {
+        const adata = await authRes.json().catch(() => ({}));
+        return { ok: false, error: adata?.message || `Bannerbear auth failed (${authRes.status})`, data: adata } as const;
+      }
+    } catch {}
     // 1) Validate template exists and (optionally) inspect available_modifications
     const tplRes = await fetch(`https://api.bannerbear.com/v2/templates/${encodeURIComponent(templateId)}`, {
       method: "GET",
@@ -52,9 +65,14 @@ export async function generateBannerbearImage(params: GenerateBannerbearParams) 
       modifications: mods,
       transparent: false,
       metadata: null,
+      // When using a Full Access Master API Key we must include project_id
+      ...(params.projectId || process.env.BANNERBEAR_PROJECT_ID
+        ? { project_id: params.projectId || process.env.BANNERBEAR_PROJECT_ID }
+        : {}),
     } as any;
 
-    const res = await fetch("https://api.bannerbear.com/v2/images", {
+    // Use the sync base URL to avoid hanging and get a final image within 10s
+    const res = await fetch("https://sync.api.bannerbear.com/v2/images", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -66,7 +84,8 @@ export async function generateBannerbearImage(params: GenerateBannerbearParams) 
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      return { ok: false, error: data?.error || data?.message || `Bannerbear error: ${res.status}`, data } as const;
+      const errMsg = data?.error || data?.message || (res.status === 408 ? "Bannerbear sync timeout (10s)" : `Bannerbear error: ${res.status}`);
+      return { ok: false, error: errMsg, data } as const;
     }
 
     // Bannerbear returns different url props depending on template; normalize

@@ -33,15 +33,9 @@ export function MintNftModal({ appId, appName, gitRepo, projectId, frameworkName
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [premintId, setPremintId] = useState<string | null>(null);
   const [step, setStep] = useState<"prepare" | "ready">("prepare");
-  const [isModalReady, setIsModalReady] = useState(false);
+  const [resolvedProjectId, setResolvedProjectId] = useState<string | null>(null);
   const effectiveProjectId = projectId || (process.env.NEXT_PUBLIC_MINTOLOGY_PROJECT_ID as string) || "";
 
-  useEffect(() => {
-    if (isModalReady) {
-      setOpen(true);
-      setIsModalReady(false); // Reset for next time
-    }
-  }, [isModalReady]);
 
   function resolveFrameworkLogoUrl(framework?: string): string | undefined {
     const f = (framework || "").toLowerCase();
@@ -51,11 +45,38 @@ export function MintNftModal({ appId, appName, gitRepo, projectId, frameworkName
     return undefined;
   }
 
-  async function preparePremint() {
+  async function preparePremint(): Promise<boolean> {
     setPreparing(true);
     setStep("prepare");
     try {
+      // 0) Resolve/ensure project first (avoid doing expensive image work if project will fail)
+      let projectIdToUse = effectiveProjectId;
+      if (!projectIdToUse) {
+        toast.message("Creating Mintology project...");
+        const createRes = await createMintologyProject({
+          name: appName,
+          description: `Project for app ${appName} (${appId})`,
+          contract_type: "Shared",
+          wallet_type: "Both",
+          network: 1,
+          chain: "eth",
+        });
+        if (!createRes.ok) {
+          toast.error(createRes.error || "Failed to create project");
+          return false;
+        }
+        const created = (createRes as any).data;
+        projectIdToUse = created?.data?.project_id || created?.project_id || created?.projectId || "";
+        if (!projectIdToUse) {
+          toast.error("Could not resolve created project ID");
+          return false;
+        }
+        toast.success("Mintology project ready");
+      }
+      setResolvedProjectId(projectIdToUse);
+
       // 1) Generate image via Bannerbear
+      toast.message("Generating Bannerbear image...");
       const bb = await generateBannerbearImage({
         templateId: "qY4mReZp3VAeb97lP8",
         appName,
@@ -70,64 +91,57 @@ export function MintNftModal({ appId, appName, gitRepo, projectId, frameworkName
       });
       if (!bb.ok) {
         toast.error(bb.error || "Bannerbear failed");
-        return;
+        return false;
       }
       const url = bb.data.imageUrl;
       setImageUrl(url);
 
-      // 2) Build metadata (ensure image)
+      // 2) Build metadata (ensure required fields)
       let metadata: any | undefined = undefined;
       if (metadataJson.trim()) {
         try {
           metadata = JSON.parse(metadataJson);
         } catch {
           toast.error("Invalid metadata JSON");
-          return;
+          return false;
         }
       }
       if (!metadata) metadata = {};
-      if (!metadata.name) metadata.name = appName;
-      if (!metadata.description) metadata.description = `NFT of app: ${appName} (${appId})`;
-      if (!metadata.image) metadata.image = url;
+      // Required by Mintology
+      metadata.name = metadata.name || appName;
+      metadata.image = metadata.image || url;
+      // Nice-to-have fields
+      metadata.description = metadata.description || appDescription || `NFT of app: ${appName} (${appId})`;
+      metadata.title = metadata.title || metadata.name;
+      metadata.subtitle = metadata.subtitle || metadata.description;
+      // Standardize attributes
+      const attrs: Array<{ trait_type: string; value: string }> = Array.isArray(metadata.attributes) ? metadata.attributes : [];
+      const ensureAttr = (trait: string, value?: string) => {
+        if (!value) return;
+        if (!attrs.find((a) => a?.trait_type === trait)) attrs.push({ trait_type: trait, value });
+      };
+      ensureAttr("app_id", appId);
+      ensureAttr("git_repo", gitRepo || undefined);
+      ensureAttr("framework_name", frameworkName || undefined);
+      ensureAttr("created_at", new Date().toISOString());
+      metadata.attributes = attrs;
 
-      // 3) Ensure projectId
-      let projectIdToUse = effectiveProjectId;
-      if (!projectIdToUse) {
-        const createRes = await createMintologyProject({
-          name: appName,
-          description: `Project for app ${appName} (${appId})`,
-          contract_type: "Shared",
-          wallet_type: "Both",
-          network: 1,
-          chain: "eth",
-        });
-        if (!createRes.ok) {
-          toast.error(createRes.error || "Failed to create project");
-          return;
-        }
-        const created = (createRes as any).data;
-        projectIdToUse = created?.data?.project_id || created?.project_id || "";
-        if (!projectIdToUse) {
-          toast.error("Could not resolve created project ID");
-          return;
-        }
-        toast.success("Created Mintology project");
-      }
-
-      // 4) Create premint (quantity 1)
-      const premint = await createPremint({ projectId: projectIdToUse, quantity: 1, metadata });
+      // 3) Create premint (quantity 1)
+      toast.message("Creating premint...");
+      const premint = await createPremint({ projectId: projectIdToUse!, quantity: 1, metadata });
       if (!premint.ok) {
         toast.error(premint.error || "Premint failed");
-        return;
+        return false;
       }
       const pid = premint.data?.data?.premint_id || premint.data?.premint_id;
       if (!pid) {
         toast.error("No premint_id returned");
-        return;
+        return false;
       }
       setPremintId(pid);
       toast.success("Premint ready");
       setStep("ready");
+      return true;
     } finally {
       setPreparing(false);
     }
@@ -148,8 +162,8 @@ export function MintNftModal({ appId, appName, gitRepo, projectId, frameworkName
         if (imageUrl && !metadata.image) metadata.image = imageUrl;
       }
 
-      // Resolve project ID: use provided or env; otherwise create a new project first
-      let projectIdToUse = effectiveProjectId;
+      // Resolve project ID: prefer the one we created/resolved during preparation
+      let projectIdToUse = resolvedProjectId || effectiveProjectId;
       if (!projectIdToUse) {
         const createRes = await createMintologyProject({
           name: appName,
@@ -164,7 +178,7 @@ export function MintNftModal({ appId, appName, gitRepo, projectId, frameworkName
           return;
         }
         const created = (createRes as any).data;
-        projectIdToUse = created?.data?.project_id || created?.project_id || "";
+        projectIdToUse = created?.data?.project_id || created?.project_id || created?.projectId || "";
         if (!projectIdToUse) {
           toast.error("Could not resolve created project ID");
           return;
@@ -186,8 +200,8 @@ export function MintNftModal({ appId, appName, gitRepo, projectId, frameworkName
 
   // Prepare premint before opening the modal so it's ready when user sees it
   async function openModalWithPreCapture() {
-    await preparePremint();
-    setIsModalReady(true);
+    const ok = await preparePremint();
+    if (ok) setOpen(true);
   }
 
   return (
@@ -195,7 +209,7 @@ export function MintNftModal({ appId, appName, gitRepo, projectId, frameworkName
       <Button size="sm" variant="secondary" onClick={openModalWithPreCapture} disabled={preparing}>
         {preparing ? "Preparing..." : "Mint as NFT"}
       </Button>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Mint “{appName}” as NFT</DialogTitle>
         </DialogHeader>
