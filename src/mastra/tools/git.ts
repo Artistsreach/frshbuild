@@ -2,6 +2,7 @@ import { createTool, ToolExecutionContext } from "@mastra/core/tools";
 import { z } from "zod";
 import { promises as fs } from "fs";
 import path from "path";
+import os from "os";
 import simpleGit from "simple-git";
 
 // Define a custom context type that includes the optional writer for streaming.
@@ -32,8 +33,8 @@ export const cloneRepoTool = createTool({
       writer.write({ type: 'notification', status: 'pending', message: `Cloning repository ${repoId}...` });
     }
     
-    // Create a unique temporary directory for the clone
-    const tempDir = await fs.mkdtemp(path.join("/tmp", "repo-"));
+    // Create a unique temporary directory for the clone (cross-platform)
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "repo-"));
 
     try {
       const git = simpleGit();

@@ -1,4 +1,4 @@
-import { Message } from "ai";
+import { UIMessage } from "ai";
 
 // Number of recent messages to keep intact
 const keepIntact = 2;
@@ -7,7 +7,7 @@ const keepIntact = 2;
  * Non-destructively truncates file contents in tool calls and results to reduce token usage
  * Returns a new array of messages with truncated content while preserving the originals
  */
-export function truncateFileToolCalls(messages: Message[]): Message[] {
+export function truncateFileToolCalls(messages: UIMessage[]): UIMessage[] {
   const messagesToProcess = messages.slice(0, -keepIntact);
   const messagesToKeep = messages.slice(-keepIntact);
 
@@ -24,9 +24,10 @@ export function truncateFileToolCalls(messages: Message[]): Message[] {
     // Process each part in the copied message
     if (messageCopy.parts) {
       for (const part of messageCopy.parts) {
-        if (part.type !== "tool-invocation") continue;
+        const p: any = part as any;
+        if (p.type !== "tool-invocation") continue;
 
-        const toolInvocation = part.toolInvocation;
+        const toolInvocation = p.toolInvocation;
         // Handle both name and toolName (for compatibility)
         const toolName = toolInvocation.toolName || toolInvocation.name;
 
@@ -53,6 +54,26 @@ export function truncateFileToolCalls(messages: Message[]): Message[] {
         else if (toolName === "write_file" || toolName === "edit_file") {
           // Truncate the args in the tool call
           if (toolInvocation.args && typeof toolInvocation.args === "object") {
+            // Fix common schema mismatch for edit_file: require top-level path
+            if (
+              toolName === "edit_file" &&
+              !("path" in toolInvocation.args) &&
+              "edits" in toolInvocation.args &&
+              Array.isArray(toolInvocation.args.edits) &&
+              toolInvocation.args.edits.length > 0 &&
+              typeof toolInvocation.args.edits[0].path === "string"
+            ) {
+              try {
+                const argsAny = toolInvocation.args as any;
+                argsAny.path = argsAny.edits[0].path;
+                // Remove per-edit path fields if present
+                for (const edit of argsAny.edits) {
+                  if (edit && typeof edit === "object" && "path" in edit) {
+                    delete edit.path;
+                  }
+                }
+              } catch {}
+            }
             if ("content" in toolInvocation.args) {
               toolInvocation.args.content =
                 "[Content truncated to save tokens]";
@@ -201,17 +222,18 @@ export function truncateFileToolCalls(messages: Message[]): Message[] {
   ];
 }
 
-export function repairBrokenMessages(messages: Message[]) {
+export function repairBrokenMessages(messages: UIMessage[]) {
   for (const message of messages) {
     if (message.role !== "assistant" || !message.parts) continue;
 
     for (const part of message.parts) {
-      if (part.type !== "tool-invocation") continue;
-      if (part.toolInvocation.state === "result" && part.toolInvocation.result)
+      const p: any = part as any;
+      if (p.type !== "tool-invocation") continue;
+      if (p.toolInvocation.state === "result" && p.toolInvocation.result)
         continue;
 
-      part.toolInvocation = {
-        ...part.toolInvocation,
+      p.toolInvocation = {
+        ...p.toolInvocation,
         state: "result",
         result: {
           content: [{ type: "text", text: "unknown error" }],

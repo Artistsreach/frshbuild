@@ -1,0 +1,202 @@
+Install Mastra
+To get started with Mastra, you’ll need access to a large language model (LLM). By default, Mastra is set up to work with OpenAI , so you’ll need an API key to begin.
+
+Mastra also supports other LLM providers. For a full list of supported models and setup instructions, see Model Providers.
+
+Prerequisites
+Node.js v20.0 or higher
+An API key from a supported Model Provider
+Install using the create mastra CLI
+Our CLI is the fastest way to get started with Mastra. You can run create mastra anywhere on your machine.
+
+Start the CLI wizard
+Run the following command to start the interactive setup:
+
+
+npm create mastra@latest
+Install using CLI flags
+
+You can also run the Mastra CLI in non-interactive mode by passing all required flags, for example:
+
+
+npx create-mastra@latest --project-name hello-mastra --example --components tools,agents,workflows --llm openai
+Install with a template
+
+Start with a pre-built template that demonstrates specific use cases:
+
+
+npx create-mastra@latest --template template-name
+Browse available templates and learn more in Templates.
+
+For example, to create a text-to-SQL application:
+
+
+npx create-mastra@latest --template text-to-sql
+See the create-mastra documentation for a full list of available CLI options.
+
+Add your API key
+Add your API key to the .env file:
+
+.env
+
+OPENAI_API_KEY=<your-api-key>
+This example uses OpenAI. Each LLM provider uses a unique name. See Model Capabilities for more information.
+
+Launch the Mastra Development Server
+You can now launch the Mastra Development Server and test your agent using the Mastra Playground.
+
+
+npm run dev
+Install manually
+The following steps will walk you through installing Mastra manually.
+
+Create a new project
+Create a new project and change directory:
+
+
+mkdir hello-mastra && cd hello-mastra
+Initialize a TypeScript project including the @mastra/core package:
+
+
+npm init -y
+ 
+npm install typescript tsx @types/node mastra@latest --save-dev
+ 
+npm install @mastra/core@latest zod@^3 @ai-sdk/openai
+Add the dev and build scripts to package.json:
+
+package.json
+
+{
+  "scripts": {
+    // ...
+    "dev": "mastra dev",
+    "build": "mastra build"
+  }
+}
+Initialize TypeScript
+Create a tsconfig.json file:
+
+
+touch tsconfig.json
+Add the following configuration:
+
+tsconfig.json
+
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "outDir": "dist"
+  },
+  "include": [
+    "src/**/*"
+  ]
+}
+This TypeScript configuration is optimized for Mastra projects, using modern module resolution and strict type checking.
+
+Set up your API key
+Create .env file:
+
+
+touch .env
+Add your API key:
+
+.env
+
+OPENAI_API_KEY=<your-api-key>
+This example uses OpenAI. Each LLM provider uses a unique name. See Model Capabilities for more information.
+
+Create a Tool
+Create a weather-tool.ts file:
+
+
+mkdir -p src/mastra/tools && touch src/mastra/tools/weather-tool.ts
+Add the following code:
+
+src/mastra/tools/weather-tool.ts
+
+import { createTool } from "@mastra/core/tools";
+import { z } from "zod";
+ 
+export const weatherTool = createTool({
+  id: "get-weather",
+  description: "Get current weather for a location",
+  inputSchema: z.object({
+    location: z.string().describe("City name")
+  }),
+  outputSchema: z.object({
+    output: z.string()
+  }),
+  execute: async () => {
+    return {
+      output: "The weather is sunny"
+    };
+  }
+});
+See the full weatherTool example in Giving an Agent a Tool.
+
+Create an Agent
+Create a weather-agent.ts file:
+
+
+mkdir -p src/mastra/agents && touch src/mastra/agents/weather-agent.ts
+Add the following code:
+
+src/mastra/agents/weather-agent.ts
+
+import { openai } from "@ai-sdk/openai";
+import { Agent } from "@mastra/core/agent";
+import { weatherTool } from "../tools/weather-tool";
+ 
+export const weatherAgent = new Agent({
+  name: 'Weather Agent',
+  instructions: `
+      You are a helpful weather assistant that provides accurate weather information.
+ 
+      Your primary function is to help users get weather details for specific locations. When responding:
+      - Always ask for a location if none is provided
+      - If the location name isn’t in English, please translate it
+      - If giving a location with multiple parts (e.g. "New York, NY"), use the most relevant part (e.g. "New York")
+      - Include relevant details like humidity, wind conditions, and precipitation
+      - Keep responses concise but informative
+ 
+      Use the weatherTool to fetch current weather data.
+`,
+  model: openai('gpt-4o-mini'),
+  tools: { weatherTool }
+});
+Register the Agent
+Create the Mastra entry point and register agent:
+
+
+touch src/mastra/index.ts
+Add the following code:
+
+src/mastra/index.ts
+
+import { Mastra } from "@mastra/core/mastra";
+import { weatherAgent } from "./agents/weather-agent";
+ 
+export const mastra = new Mastra({
+  agents: { weatherAgent }
+});
+You can now launch the Mastra Development Server and test your agent using the Mastra Playground.
+
+Add to an existing project
+Mastra can be installed and integrated into a wide range of projects. Below are links to integration guides to help you get started:
+
+Next.js
+Vite + React
+Astro
+Express
+mastra init
+To install Mastra in an existing project, use the mastra init command.
+
+See mastra init for more information.

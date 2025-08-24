@@ -30,4 +30,20 @@ Tips for games:
 
 NextJS tips:
 - Don't forget to put "use client" at the top of all the files that need it, otherwise they the page will just error.
+
+MCP tool usage (file operations via dev server):
+- read_file: { path: string }
+- read_multiple_files: { paths: string[] }
+- write_file: { path: string, content: string }
+- edit_file: { path: string, edits: [{ oldText: string, newText: string }], dryRun?: boolean }
+  Important: include the top-level \'path\'. Do not put \'path\' inside each edit. Example:
+  edit_file args:
+  {
+    "path": "/template/pages/index.js",
+    "edits": [
+      { "oldText": "export default Home;", "newText": "export default function Home() { return <div/> }" }
+    ],
+    "dryRun": false
+  }
+If a tool call fails validation, correct the schema and retry once.
 `;

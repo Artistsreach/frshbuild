@@ -86,6 +86,27 @@ export async function POST(req: NextRequest) {
 
   const { messages }: { messages: UIMessage[] } = await req.json();
 
+  // If a previous run marked this thread to auto-resume, prepend a synthetic continue message
+  const needsResume = await redisPublisher.get(`app:${appId}:needs-resume`);
+  if (needsResume === "1") {
+    // Limit auto-resume loops
+    const attemptsRaw = await redisPublisher.get(`app:${appId}:resume-attempts`);
+    const attempts = attemptsRaw ? parseInt(attemptsRaw, 10) : 0;
+    if (attempts < 2) {
+      await redisPublisher.set(`app:${appId}:resume-attempts`, String(attempts + 1), { EX: 60 * 10 });
+      // Clear the flag so we don't chain endlessly
+      await redisPublisher.del(`app:${appId}:needs-resume`);
+      messages.push({
+        id: crypto.randomUUID(),
+        role: "user",
+        parts: [{ type: "text", text: "continue from where you left off. finish all remaining tasks and checklist items." }],
+      } as unknown as UIMessage);
+    } else {
+      // Give up auto-resume after attempts threshold
+      await redisPublisher.del(`app:${appId}:needs-resume`);
+    }
+  }
+
   const { mcpEphemeralUrl } = await freestyle.requestDevServer({
     repoId: app.info.gitRepo,
   });
@@ -133,8 +154,8 @@ export async function sendMessage(
       thread: { id: appId },
       resource: appId,
     },
-    maxSteps: 100,
-    maxRetries: 0,
+    maxSteps: 200,
+    maxRetries: 2,
     maxOutputTokens: 64000,
     toolsets,
     async onChunk() {
@@ -150,6 +171,7 @@ export async function sendMessage(
 
       if (shouldAbort) {
         await redisPublisher.del(`app:${appId}:stream-state`);
+        await redisPublisher.set(`app:${appId}:needs-resume`, "1", { EX: 60 * 10 });
         controller.abort("Aborted stream after step finish");
         const messages = messageList.drainUnsavedMessages();
         console.log(messages);
@@ -162,10 +184,19 @@ export async function sendMessage(
     onError: async (error) => {
       await mcp.disconnect();
       await redisPublisher.del(`app:${appId}:stream-state`);
+      await redisPublisher.set(`app:${appId}:needs-resume`, "1", { EX: 60 * 10 });
       console.error("Error:", error);
     },
     onFinish: async () => {
       await redisPublisher.del(`app:${appId}:stream-state`);
+      // Mark for auto-resume if no explicit abort occurred and no recent resume attempt
+      if (!shouldAbort) {
+        const attemptsRaw = await redisPublisher.get(`app:${appId}:resume-attempts`);
+        const attempts = attemptsRaw ? parseInt(attemptsRaw, 10) : 0;
+        if (attempts < 2) {
+          await redisPublisher.set(`app:${appId}:needs-resume`, "1", { EX: 60 * 10 });
+        }
+      }
       await mcp.disconnect();
     },
     abortSignal: controller.signal,

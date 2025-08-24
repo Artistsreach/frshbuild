@@ -1,0 +1,290 @@
+Run Class
+The Run class represents a workflow execution instance, providing methods to start, resume, stream, and monitor workflow execution.
+
+Usage example
+
+const run = await workflow.createRunAsync();
+ 
+const result = await run.start({
+  inputData: { value: "initial data" }
+});
+ 
+if (result.status === "suspended") {
+  const resumedResult = await run.resume({
+    resumeData: { value: "resume data" }
+  });
+}
+Run Methods
+start:
+(options?: StartOptions) => Promise<WorkflowResult>
+Starts workflow execution with input data
+resume:
+(options?: ResumeOptions) => Promise<WorkflowResult>
+Resumes a suspended workflow from a specific step
+stream:
+(options?: StreamOptions) => Promise<StreamResult>
+Monitors workflow execution as a stream of events
+streamVNext:
+(options?: StreamOptions) => MastraWorkflowStream
+Enables real-time streaming with enhanced features
+watch:
+(callback: WatchCallback, type?: WatchType) => UnwatchFunction
+Monitors workflow execution with callback-based events
+cancel:
+() => Promise<void>
+Cancels the workflow execution
+Run Status
+A workflow run’s status indicates its current execution state. The possible values are:
+
+success:
+string
+All steps finished executing successfully, with a valid result output
+failed:
+string
+Workflow execution encountered an error during execution, with error details available
+suspended:
+string
+Workflow execution is paused waiting for resume, with suspended step information
+
+Run.start()
+The .start() method starts a workflow run with input data, allowing you to execute the workflow from the beginning.
+
+Usage example
+
+const run = await workflow.createRunAsync();
+ 
+const result = await run.start({
+  inputData: {
+    value: "initial data",
+  },
+});
+Parameters
+inputData?:
+z.infer<TInput>
+Input data that matches the workflow's input schema
+runtimeContext?:
+RuntimeContext
+Runtime context data to use during workflow execution
+writableStream?:
+WritableStream<ChunkType>
+Optional writable stream for streaming workflow output
+Returns
+result:
+Promise<WorkflowResult<TOutput, TSteps>>
+A promise that resolves to the workflow execution result containing step outputs and status
+Extended usage example
+
+import { RuntimeContext } from "@mastra/core/runtime-context";
+ 
+const run = await workflow.createRunAsync();
+ 
+const runtimeContext = new RuntimeContext();
+runtimeContext.set("variable", false);
+ 
+const result = await run.start({
+  inputData: {
+    value: "initial data"
+  },
+  runtimeContext
+});
+
+Run.resume()
+The .resume() method resumes a suspended workflow run with new data, allowing you to continue execution from a specific step.
+
+Usage example
+
+const run = await workflow.createRunAsync();
+ 
+const result = await run.start({ inputData: { value: "initial data" } });
+ 
+if (result.status === "suspended") {
+  const resumedResults = await run.resume({
+    resumeData: { value: "resume data" }
+  });
+}
+Parameters
+resumeData?:
+z.infer<TResumeSchema>
+Data for resuming the suspended step
+step?:
+Step<string, any, any, TResumeSchema, any, TEngineType> | [...Step<string, any, any, any, any, TEngineType>[], Step<string, any, any, TResumeSchema, any, TEngineType>] | string | string[]
+The step(s) to resume execution from. Can be a Step instance, array of Steps, step ID string, or array of step ID strings
+runtimeContext?:
+RuntimeContext
+Runtime context data to use when resuming
+runCount?:
+number
+Optional run count for nested workflow execution
+Returns
+result:
+Promise<WorkflowResult<TOutput, TSteps>>
+A promise that resolves to the workflow execution result containing step outputs and status
+Extended usage example
+
+if (result.status === "suspended") {
+  const resumedResults = await run.resume({
+    step: result.suspended[0],
+    resumeData: { value: "resume data" }
+  });
+}
+Note: When exactly one step is suspended, you can omit the step parameter and the workflow will automatically resume that step. For workflows with multiple suspended steps, you must explicitly specify which step to resume.
+
+Run.stream()
+The .stream() method allows you to monitor the execution of a workflow run, providing real-time updates on the status of steps.
+
+Usage example
+
+const run = await workflow.createRunAsync();
+ 
+const stream = await run.stream({
+  inputData: {
+    value: "initial data",
+  },
+});
+Parameters
+inputData?:
+z.infer<TInput>
+Input data that matches the workflow's input schema
+runtimeContext?:
+RuntimeContext
+Runtime context data to use during workflow execution
+Returns
+stream:
+ReadableStream<StreamEvent>
+A readable stream that emits workflow execution events in real-time
+getWorkflowState:
+() => Promise<WorkflowResult<TOutput, TSteps>>
+A function that returns a promise resolving to the final workflow result
+Extended usage example
+
+const { getWorkflowState } = await run.stream({
+  inputData: {
+    value: "initial data"
+  }
+});
+ 
+const result = await getWorkflowState();
+Stream Events
+The stream emits various event types during workflow execution. Each event has a type field and a payload containing relevant data:
+
+start: Workflow execution begins
+step-start: A step begins execution
+tool-call: A tool call is initiated
+tool-call-streaming-start: Tool call streaming begins
+tool-call-delta: Incremental tool output updates
+step-result: A step completes with results
+step-finish: A step finishes execution
+finish: Workflow execution completes
+
+Run.streamVNext()
+Experimental Feature: This is a new streaming implementation that will replace the existing stream() method once battle-tested. The API may change as we refine the feature based on feedback.
+
+The .streamVNext() method enables real-time streaming of responses from a workflow. This enhanced streaming capability will eventually replace the current stream() method.
+
+Usage example
+
+const run = await workflow.createRunAsync();
+ 
+const stream = run.streamVNext({
+  inputData: {
+    value: "initial data",
+  },
+});
+Parameters
+inputData?:
+z.infer<TInput>
+Input data that matches the workflow's input schema
+runtimeContext?:
+RuntimeContext
+Runtime context data to use during workflow execution
+Returns
+stream:
+MastraWorkflowStream<ChunkType>
+A custom stream that extends ReadableStream<ChunkType> with additional workflow-specific properties
+stream.status:
+Promise<RunStatus>
+A promise that resolves to the current workflow run status
+stream.result:
+Promise<WorkflowResult<TOutput, TSteps>>
+A promise that resolves to the final workflow result
+stream.usage:
+Promise<{ promptTokens: number; completionTokens: number; totalTokens: number }>
+A promise that resolves to token usage statistics
+Extended usage example
+
+const run = await workflow.createRunAsync();
+ 
+const stream = run.streamVNext({
+  inputData: {
+    value: "initial data",
+  },
+});
+ 
+const result = await stream.result;
+Stream Events
+The stream emits various event types during workflow execution. Each event has a type field and a payload containing relevant data:
+
+start: Workflow execution begins
+step-start: A step begins execution
+step-output: Custom output from a step
+step-result: A step completes with results
+finish: Workflow execution completes with usage statistics
+
+Run.watch()
+The .watch() method allows you to monitor the execution of a workflow run, providing real-time updates on the status of steps.
+
+Usage example
+
+const run = await workflow.createRunAsync();
+ 
+run.watch((event) => {
+  console.log(event?.payload?.currentStep?.id);
+});
+ 
+const result = await run.start({ inputData: { value: "initial data" } });
+Parameters
+callback:
+(event: WatchEvent) => void
+A callback function that is called whenever a step is completed or the workflow state changes. The event parameter contains: type ('watch'), payload (currentStep and workflowState), and eventTimestamp
+type?:
+'watch' | 'watch-v2'
+= 'watch'
+The type of watch events to listen for. 'watch' for step completion events, 'watch-v2' for data stream events
+Returns
+unwatch:
+() => void
+A function that can be called to stop watching the workflow run
+Extended usage example
+
+const run = await workflow.createRunAsync();
+ 
+run.watch((event) => {
+  console.log(event?.payload?.currentStep?.id);
+}, "watch");
+ 
+const result = await run.start({ inputData: { value: "initial data" } });
+Run.cancel()
+The .cancel() method cancels a workflow run, stopping execution and cleaning up resources.
+
+Usage example
+
+const run = await workflow.createRunAsync();
+ 
+await run.cancel();
+Parameters
+No parameters:
+void
+This method takes no parameters
+Returns
+result:
+Promise<void>
+A promise that resolves when the workflow run has been cancelled
+Extended usage example
+
+const run = await workflow.createRunAsync();
+ 
+try {
+  const result = await run.start({ inputData: { value: "initial data" } });
+} catch (error) {
+  await run.cancel();
+}

@@ -1,0 +1,50 @@
+Templates
+Templates are pre-built Mastra projects that demonstrate specific use cases and patterns. They provide working examples you can run immediately and customize for your needs.
+
+What Templates Offer
+Templates include:
+
+Complete working examples - Functional code demonstrating specific patterns
+Best practices - Proper project structure and Mastra conventions
+Educational value - Learn different Mastra features through examples
+Quick start - Bootstrap projects faster than starting from scratch
+Using Templates
+Install a template using the create-mastra command:
+
+
+npx create-mastra@latest --template template-name
+For example, to create a text-to-SQL application:
+
+
+npx create-mastra@latest --template text-to-sql
+Setting Up a Template
+After installation:
+
+Navigate to your project:
+
+
+cd your-project-name
+Configure environment variables:
+
+
+cp .env.example .env
+Edit .env with your API keys as specified in the template’s README.
+
+Start development:
+
+
+npm run dev
+Each template includes a comprehensive README with specific setup instructions and usage examples.
+
+Available Templates
+Browse available templates in the templates directory .
+
+Next Steps
+Explore code - Understand how templates implement functionality
+Customize - Modify agents, tools, and workflows for your use case
+Learn patterns - Study templates to understand Mastra best practices
+Contribute - Create your own templates for the community
+For detailed information on creating templates, see the Templates Reference.
+
+Installation
+Project Structure
