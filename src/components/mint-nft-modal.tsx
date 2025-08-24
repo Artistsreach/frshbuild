@@ -45,16 +45,35 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
   async function captureScreenshot() {
     setCapturing(true);
     try {
-      const fn = (window as any).captureAppScreenshot as undefined | (() => Promise<string | null>);
+      const h2c = (window as any).html2canvas as undefined | ((node: HTMLElement, opts?: any) => Promise<HTMLCanvasElement | null>);
       let dataUrl: string | null = null;
-      if (fn) {
-        dataUrl = await fn();
+
+      // 1) Try capturing the entire application viewport first
+      if (h2c) {
+        const root = document.body as HTMLElement;
+        const canvas = await h2c(root, {
+          backgroundColor: null,
+          useCORS: true,
+          scale: 1,
+          logging: false,
+          windowWidth: document.documentElement.clientWidth,
+          windowHeight: document.documentElement.clientHeight,
+        });
+        if (canvas) dataUrl = canvas.toDataURL("image/webp", 0.9);
       }
-      // Fallback: try capturing the preview container directly
+
+      // 2) Fallback: use the helper exposed by WebView (captures preview container)
       if (!dataUrl) {
+        const fn = (window as any).captureAppScreenshot as undefined | (() => Promise<string | null>);
+        if (fn) {
+          dataUrl = await fn();
+        }
+      }
+
+      // 3) Fallback: capture the preview container directly
+      if (!dataUrl && h2c) {
         const el = document.getElementById("app-preview-container");
-        const h2c = (window as any).html2canvas as undefined | ((node: HTMLElement, opts?: any) => Promise<HTMLCanvasElement | null>);
-        if (el && h2c) {
+        if (el) {
           const canvas = await h2c(el as HTMLElement, {
             backgroundColor: null,
             useCORS: true,
