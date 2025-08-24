@@ -67,6 +67,33 @@ export default function WebView(props: {
     };
   }, [props.appId]);
 
+  useEffect(() => {
+    // Expose a helper to capture a screenshot of the preview container
+    (window as any).captureAppScreenshot = async (): Promise<string | null> => {
+      try {
+        if (!containerRef.current) return null;
+        const canvas = await (window as any).html2canvas?.(containerRef.current, {
+          backgroundColor: null,
+          useCORS: true,
+          scale: 0.8,
+          logging: false,
+          windowWidth: containerRef.current.clientWidth,
+          windowHeight: containerRef.current.clientHeight,
+        });
+        if (!canvas) return null;
+        return canvas.toDataURL("image/webp", 0.9);
+      } catch (e) {
+        console.debug("captureAppScreenshot failed", e);
+        return null;
+      }
+    };
+    return () => {
+      try {
+        delete (window as any).captureAppScreenshot;
+      } catch {}
+    };
+  }, []);
+
   return (
     <div className="flex flex-col overflow-hidden h-screen border-l transition-opacity duration-700 mt-[2px]">
       <div className="h-12 border-b border-gray-200 dark:border-black items-center flex px-2 bg-background sticky top-0 justify-between gap-2">
