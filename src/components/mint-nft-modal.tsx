@@ -194,12 +194,16 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
                 </Button>
               </div>
             </div>
-            {screenshot && (
-              <div className="border rounded p-2">
-                <img src={screenshot} alt="Screenshot preview" className="max-h-48 object-contain mx-auto" />
+            {(screenshotUrl || screenshot) ? (
+              <div className="border rounded p-2 space-y-2">
+                <img src={screenshotUrl || screenshot || undefined} alt="Screenshot preview" className="max-h-48 object-contain mx-auto" />
+                {screenshotUrl && (
+                  <div className="text-xs text-muted-foreground break-all text-center">
+                    Uploaded URL: <a className="underline" href={screenshotUrl} target="_blank" rel="noreferrer">{screenshotUrl}</a>
+                  </div>
+                )}
               </div>
-            )}
-            {!screenshot && (
+            ) : (
               <div className="text-xs text-muted-foreground">Click "Capture screenshot" while the app preview is visible to grab an image.</div>
             )}
           </div>
