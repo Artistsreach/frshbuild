@@ -39,6 +39,10 @@ export const cloneRepoTool = createTool({
     try {
       const git = simpleGit();
       await git.clone(repoUrl, tempDir);
+
+      // Disable SSL verification for this specific repository to prevent push errors
+      const repoGit = simpleGit(tempDir);
+      await repoGit.addConfig("http.sslVerify", "false");
       
       console.log(`Repository ${repoId} cloned to ${tempDir}`);
       if (writer) {
