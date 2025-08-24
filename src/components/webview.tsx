@@ -72,6 +72,37 @@ export default function WebView(props: {
     (window as any).captureAppScreenshot = async (): Promise<string | null> => {
       try {
         if (!containerRef.current) return null;
+
+        // Try to capture the inner iframe (same-origin case). This avoids white boxes from iframe content.
+        const iframe = containerRef.current.querySelector("iframe") as HTMLIFrameElement | null;
+        if (iframe && iframe.contentWindow && iframe.contentDocument) {
+          try {
+            const iframeWin = iframe.contentWindow as any;
+            const iframeDoc = iframe.contentDocument as Document;
+            const target = iframeDoc.body as HTMLElement;
+            // Prefer html2canvas inside the iframe if available (better accuracy with its own styles)
+            const h2c = (iframeWin && iframeWin.html2canvas) ? iframeWin.html2canvas : (window as any).html2canvas;
+            if (h2c && target) {
+              const rect = target.getBoundingClientRect();
+              const canvas = await h2c(target, {
+                backgroundColor: null,
+                useCORS: true,
+                scale: 1,
+                logging: false,
+                windowWidth: Math.max(1, Math.floor(rect.width || iframe.clientWidth || containerRef.current.clientWidth)),
+                windowHeight: Math.max(1, Math.floor(rect.height || iframe.clientHeight || containerRef.current.clientHeight)),
+              });
+              if (canvas) {
+                return canvas.toDataURL("image/webp", 0.9);
+              }
+            }
+          } catch (e) {
+            // Cross-origin or other error; fall back to container capture below
+            console.debug("iframe capture failed; falling back to container", e);
+          }
+        }
+
+        // Fallback: capture the container (will render iframe as blank if cross-origin)
         const canvas = await (window as any).html2canvas?.(containerRef.current, {
           backgroundColor: null,
           useCORS: true,
