@@ -10,7 +10,7 @@ import { createMintologyProject } from "@/actions/create-mintology-project";
 import { toast } from "sonner";
 import { getStorage as getFirebaseStorage } from "@/lib/firebase";
 import { ref as fbRef, uploadBytes, getDownloadURL } from "firebase/storage";
-import { toPng } from "html-to-image";
+import html2canvas from "html2canvas";
 
 export function MintNftModal({ appId, appName, projectId }: { appId: string; appName: string; projectId?: string }) {
   const [open, setOpen] = useState(false);
@@ -40,27 +40,24 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
   async function captureScreenshot() {
     setCapturing(true);
     try {
-      const h2c = (window as any).html2canvas as undefined | ((node: HTMLElement, opts?: any) => Promise<HTMLCanvasElement | null>);
       let dataUrl: string | null = null;
 
       // 1) Preferred: capture the entire viewport (full screen) before opening the modal
-      if (h2c) {
-        try {
-          const root = document.body as HTMLElement;
-          const canvas = await h2c(root, {
+      try {
+        const root = document.body as HTMLElement;
+        const canvas = await html2canvas(root, {
             backgroundColor: null,
             useCORS: true,
             scale: 1,
             logging: false,
             windowWidth: window.innerWidth || document.documentElement.clientWidth,
             windowHeight: window.innerHeight || document.documentElement.clientHeight,
-          });
-          if (canvas) {
-            dataUrl = canvas.toDataURL("image/webp", 0.9);
-          }
-        } catch (e) {
-          console.debug("full-screen html2canvas failed, will fallback", e);
+        });
+        if (canvas) {
+          dataUrl = canvas.toDataURL("image/webp", 0.9);
         }
+      } catch (e) {
+        console.debug("full-screen html2canvas failed, will fallback", e);
       }
 
       // 2) Fallback: use WebView's helper which tries to capture inside the iframe when possible
@@ -75,29 +72,33 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
         }
       }
 
-      // 3) Fallback: capture the visible preview container with html-to-image
+      // 3) Fallback: capture the visible preview container with html2canvas
       if (!dataUrl) {
         const el = document.getElementById("app-preview-container");
         if (el) {
           try {
-            dataUrl = await toPng(el as HTMLElement, {
-              cacheBust: true,
-              pixelRatio: 1,
-              canvasWidth: (el as HTMLElement).clientWidth,
-              canvasHeight: (el as HTMLElement).clientHeight,
-              backgroundColor: undefined,
+            const canvas = await html2canvas(el as HTMLElement, {
+              backgroundColor: null,
+              useCORS: true,
+              scale: 1,
+              logging: false,
+              width: (el as HTMLElement).clientWidth,
+              height: (el as HTMLElement).clientHeight,
             });
+            if (canvas) {
+              dataUrl = canvas.toDataURL("image/webp", 0.9);
+            }
           } catch (e) {
-            console.debug("html-to-image failed, will fallback", e);
+            console.debug("html2canvas element capture failed, will fallback", e);
           }
         }
       }
 
       // 4) Last resort: try html2canvas again with documentElement
-      if (!dataUrl && h2c) {
+      if (!dataUrl) {
         try {
           const root = document.documentElement as HTMLElement;
-          const canvas = await h2c(root, {
+          const canvas = await html2canvas(root, {
             backgroundColor: null,
             useCORS: true,
             scale: 1,
