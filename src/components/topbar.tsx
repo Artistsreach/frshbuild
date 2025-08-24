@@ -98,7 +98,7 @@ export function TopBar({
         )}
         {children}
         {isPublic && (
-          <MintNftModal appName={appName} appId={appId} />
+          <MintNftModal appName={appName} appId={appId} gitRepo={repoId} />
         )}
         {/* Crowdfund moved to WebView right controls; hide here */}
         {/* Subscribe button logic, similar to AppCard */}

@@ -5,9 +5,10 @@ interface MintNftParams {
   wallet_address?: string;
   email?: string;
   metadata?: Record<string, any>;
+  premint_id?: string;
 }
 
-export async function mintNft({ projectId, wallet_address, email, metadata }: MintNftParams) {
+export async function mintNft({ projectId, wallet_address, email, metadata, premint_id }: MintNftParams) {
   if (!projectId) {
     return { ok: false, error: "projectId is required" };
   }
@@ -32,6 +33,7 @@ export async function mintNft({ projectId, wallet_address, email, metadata }: Mi
         ...(wallet_address ? { wallet_address } : {}),
         ...(email ? { email } : {}),
         ...(metadata ? { metadata } : {}),
+        ...(premint_id ? { premint_id } : {}),
       }),
       // Extra safeguard for server-only
       cache: "no-store",
@@ -52,3 +54,4 @@ export async function mintNft({ projectId, wallet_address, email, metadata }: Mi
     return { ok: false, error: err?.message || "Unknown error" };
   }
 }
+
