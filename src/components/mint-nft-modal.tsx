@@ -43,17 +43,39 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
       const h2c = (window as any).html2canvas as undefined | ((node: HTMLElement, opts?: any) => Promise<HTMLCanvasElement | null>);
       let dataUrl: string | null = null;
 
-      // 1) Preferred: use WebView's helper which tries to capture inside the iframe when possible
-      const captureFn = (window as any).captureAppScreenshot as undefined | (() => Promise<string | null>);
-      if (captureFn) {
+      // 1) Preferred: capture the entire viewport (full screen) before opening the modal
+      if (h2c) {
         try {
-          dataUrl = await captureFn();
+          const root = document.body as HTMLElement;
+          const canvas = await h2c(root, {
+            backgroundColor: null,
+            useCORS: true,
+            scale: 1,
+            logging: false,
+            windowWidth: window.innerWidth || document.documentElement.clientWidth,
+            windowHeight: window.innerHeight || document.documentElement.clientHeight,
+          });
+          if (canvas) {
+            dataUrl = canvas.toDataURL("image/webp", 0.9);
+          }
         } catch (e) {
-          console.debug("captureAppScreenshot failed, falling back", e);
+          console.debug("full-screen html2canvas failed, will fallback", e);
         }
       }
 
-      // 2) Fallback: capture the visible preview container with html-to-image
+      // 2) Fallback: use WebView's helper which tries to capture inside the iframe when possible
+      if (!dataUrl) {
+        const captureFn = (window as any).captureAppScreenshot as undefined | (() => Promise<string | null>);
+        if (captureFn) {
+          try {
+            dataUrl = await captureFn();
+          } catch (e) {
+            console.debug("captureAppScreenshot failed, falling back", e);
+          }
+        }
+      }
+
+      // 3) Fallback: capture the visible preview container with html-to-image
       if (!dataUrl) {
         const el = document.getElementById("app-preview-container");
         if (el) {
@@ -71,18 +93,22 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
         }
       }
 
-      // 3) Last resort: capture the entire page with html2canvas
+      // 4) Last resort: try html2canvas again with documentElement
       if (!dataUrl && h2c) {
-        const root = document.body as HTMLElement;
-        const canvas = await h2c(root, {
-          backgroundColor: null,
-          useCORS: true,
-          scale: 1,
-          logging: false,
-          windowWidth: document.documentElement.clientWidth,
-          windowHeight: document.documentElement.clientHeight,
-        });
-        if (canvas) dataUrl = canvas.toDataURL("image/webp", 0.9);
+        try {
+          const root = document.documentElement as HTMLElement;
+          const canvas = await h2c(root, {
+            backgroundColor: null,
+            useCORS: true,
+            scale: 1,
+            logging: false,
+            windowWidth: window.innerWidth || document.documentElement.clientWidth,
+            windowHeight: window.innerHeight || document.documentElement.clientHeight,
+          });
+          if (canvas) dataUrl = canvas.toDataURL("image/webp", 0.9);
+        } catch (e) {
+          console.debug("final html2canvas attempt failed", e);
+        }
       }
       if (!dataUrl) {
         toast.error("Failed to capture screenshot. Make sure the preview is visible on this page.");
