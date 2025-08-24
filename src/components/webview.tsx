@@ -12,6 +12,7 @@ import { RefreshCwIcon, Monitor, Tablet, Smartphone } from "lucide-react";
 import { ShareButton } from "./share-button";
 import { ModeToggle } from "./theme-toggle";
 import { CrowdfundModal } from "./crowdfund-modal";
+import html2canvas from "html2canvas";
 
 export default function WebView(props: {
   repo: string;
@@ -38,7 +39,8 @@ export default function WebView(props: {
     const handler = async () => {
       try {
         if (!containerRef.current) return;
-        const canvas = await (window as any).html2canvas?.(containerRef.current, {
+        const h2c = ((window as any).html2canvas || html2canvas) as (el: HTMLElement, opts?: any) => Promise<HTMLCanvasElement>;
+        const canvas = await h2c(containerRef.current, {
           backgroundColor: null,
           useCORS: true,
           scale: 0.6,
@@ -103,7 +105,8 @@ export default function WebView(props: {
         }
 
         // Fallback: capture the container (will render iframe as blank if cross-origin)
-        const canvas = await (window as any).html2canvas?.(containerRef.current, {
+        const h2c2 = ((window as any).html2canvas || html2canvas) as (el: HTMLElement, opts?: any) => Promise<HTMLCanvasElement>;
+        const canvas = await h2c2(containerRef.current, {
           backgroundColor: null,
           useCORS: true,
           scale: 0.8,
