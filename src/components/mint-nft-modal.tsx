@@ -8,6 +8,8 @@ import { Textarea } from "./ui/textarea";
 import { mintNft } from "@/actions/mint-nft";
 import { createMintologyProject } from "@/actions/create-mintology-project";
 import { toast } from "sonner";
+import { getStorage as getFirebaseStorage } from "@/lib/firebase";
+import { ref as fbRef, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export function MintNftModal({ appId, appName, projectId }: { appId: string; appName: string; projectId?: string }) {
   const [open, setOpen] = useState(false);
@@ -22,6 +24,7 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
   const [submitting, setSubmitting] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [includeImage, setIncludeImage] = useState(true);
   const effectiveProjectId = projectId || (process.env.NEXT_PUBLIC_MINTOLOGY_PROJECT_ID as string) || "";
 
@@ -76,6 +79,24 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
           body: JSON.stringify({ dataUrl }),
         });
       } catch {}
+      // Upload to Firebase Storage and store public URL
+      try {
+        const storage = getFirebaseStorage();
+        if (!storage) {
+          toast.error("Firebase not configured. Set NEXT_PUBLIC_FIREBASE_* env vars.");
+        } else {
+          const path = `apps/${appId}/screenshots/${Date.now()}.webp`;
+          const blob = await (await fetch(dataUrl)).blob();
+          const r = fbRef(storage, path);
+          await uploadBytes(r, blob, { contentType: "image/webp" });
+          const url = await getDownloadURL(r);
+          setScreenshotUrl(url);
+          toast.success("Screenshot uploaded");
+        }
+      } catch (e) {
+        console.debug("upload failed", e);
+        // non-blocking
+      }
       toast.success("Screenshot captured");
     } finally {
       setCapturing(false);
@@ -95,10 +116,10 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
         }
 
       // If requested, embed screenshot as image if not already provided
-      if (includeImage && screenshot) {
+      if (includeImage && (screenshotUrl || screenshot)) {
         if (!metadata) metadata = {};
         if (!metadata.image) {
-          metadata.image = screenshot;
+          metadata.image = screenshotUrl || screenshot;
         }
       }
       }
