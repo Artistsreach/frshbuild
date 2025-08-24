@@ -27,9 +27,15 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [includeImage, setIncludeImage] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [isModalReady, setIsModalReady] = useState(false);
   const effectiveProjectId = projectId || (process.env.NEXT_PUBLIC_MINTOLOGY_PROJECT_ID as string) || "";
 
-  // Removed auto-capture on open to avoid the modal overlay in screenshots.
+  useEffect(() => {
+    if (isModalReady) {
+      setOpen(true);
+      setIsModalReady(false); // Reset for next time
+    }
+  }, [isModalReady]);
 
   async function captureScreenshot() {
     setCapturing(true);
@@ -173,7 +179,7 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
   // Capture the page before opening the modal so the modal overlay is not included
   async function openModalWithPreCapture() {
     await captureScreenshot();
-    setOpen(true);
+    setIsModalReady(true);
   }
 
   return (
