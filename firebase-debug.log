@@ -1,0 +1,91 @@
+[debug] [2025-08-24T15:24:38.776Z] ----------------------------------------------------------------------
+[debug] [2025-08-24T15:24:38.781Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\test\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only storage
+[debug] [2025-08-24T15:24:38.782Z] CLI Version:   14.14.0
+[debug] [2025-08-24T15:24:38.782Z] Platform:      win32
+[debug] [2025-08-24T15:24:38.782Z] Node Version:  v22.16.0
+[debug] [2025-08-24T15:24:38.782Z] Time:          Sun Aug 24 2025 11:24:38 GMT-0400 (Eastern Daylight Saving Time)
+[debug] [2025-08-24T15:24:38.783Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-08-24T15:24:39.095Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-08-24T15:24:39.095Z] > authorizing via signed-in user (frshfrnt@gmail.com)
+[debug] [2025-08-24T15:24:39.096Z] [iam] checking project fresh25 for permissions ["firebase.projects.get","firebaserules.releases.create","firebaserules.releases.update","firebaserules.rulesets.create"]
+[debug] [2025-08-24T15:24:39.097Z] Checked if tokens are valid: false, expires at: 1756049380681
+[debug] [2025-08-24T15:24:39.097Z] Checked if tokens are valid: false, expires at: 1756049380681
+[debug] [2025-08-24T15:24:39.098Z] > refreshing access token with scopes: []
+[debug] [2025-08-24T15:24:39.101Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-08-24T15:24:39.101Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-08-24T15:24:39.324Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-08-24T15:24:39.325Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-08-24T15:24:39.338Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/fresh25:testIamPermissions [none]
+[debug] [2025-08-24T15:24:39.338Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/fresh25:testIamPermissions x-goog-quota-user=projects/fresh25
+[debug] [2025-08-24T15:24:39.338Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/fresh25:testIamPermissions {"permissions":["firebase.projects.get","firebaserules.releases.create","firebaserules.releases.update","firebaserules.rulesets.create"]}
+[debug] [2025-08-24T15:24:39.615Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/fresh25:testIamPermissions 200
+[debug] [2025-08-24T15:24:39.615Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/fresh25:testIamPermissions {"permissions":["firebase.projects.get","firebaserules.releases.create","firebaserules.releases.update","firebaserules.rulesets.create"]}
+[info] 
+[info] === Deploying to 'fresh25'...
+[info] 
+[info] i  deploying storage 
+[info] i  storage: ensuring required API firebasestorage.googleapis.com is enabled... 
+[debug] [2025-08-24T15:24:39.619Z] Checked if tokens are valid: true, expires at: 1756052678325
+[debug] [2025-08-24T15:24:39.619Z] Checked if tokens are valid: true, expires at: 1756052678325
+[debug] [2025-08-24T15:24:39.620Z] >>> [apiv2][query] GET https://firebasestorage.googleapis.com/v1alpha/projects/fresh25/defaultBucket [none]
+[debug] [2025-08-24T15:24:39.966Z] <<< [apiv2][status] GET https://firebasestorage.googleapis.com/v1alpha/projects/fresh25/defaultBucket 200
+[debug] [2025-08-24T15:24:39.967Z] <<< [apiv2][body] GET https://firebasestorage.googleapis.com/v1alpha/projects/fresh25/defaultBucket {"name":"projects/fresh25/defaultBucket","location":"US-CENTRAL1","bucket":{"name":"projects/fresh25/buckets/fresh25.firebasestorage.app"},"storageClass":"REGIONAL"}
+[info] i  firebase.storage: checking storage.rules for compilation errors... 
+[debug] [2025-08-24T15:24:39.969Z] Checked if tokens are valid: true, expires at: 1756052678325
+[debug] [2025-08-24T15:24:39.969Z] Checked if tokens are valid: true, expires at: 1756052678325
+[debug] [2025-08-24T15:24:39.970Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/fresh25:test [none]
+[debug] [2025-08-24T15:24:39.970Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/fresh25:test [omitted]
+[debug] [2025-08-24T15:24:40.193Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/fresh25:test 200
+[debug] [2025-08-24T15:24:40.193Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/fresh25:test {}
+[info] +  firebase.storage: rules file storage.rules compiled successfully 
+[debug] [2025-08-24T15:24:40.194Z] Checked if tokens are valid: true, expires at: 1756052678325
+[debug] [2025-08-24T15:24:40.194Z] Checked if tokens are valid: true, expires at: 1756052678325
+[debug] [2025-08-24T15:24:40.195Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/fresh25/releases pageSize=10&pageToken=
+[debug] [2025-08-24T15:24:40.326Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/fresh25/releases 200
+[debug] [2025-08-24T15:24:40.326Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/fresh25/releases {"releases":[{"name":"projects/fresh25/releases/cloud.firestore","rulesetName":"projects/fresh25/rulesets/7a2374b5-8395-4da0-90b2-0bd148da831c","createTime":"2025-08-12T02:55:09.220454Z","updateTime":"2025-08-23T22:37:48.606816Z"},{"name":"projects/fresh25/releases/firebase.storage/build25","rulesetName":"projects/fresh25/rulesets/9f8545c8-6e15-45ed-89a2-d48b02d0c227","createTime":"2025-08-24T14:23:23.271700Z","updateTime":"2025-08-24T14:23:23.271700Z"},{"name":"projects/fresh25/releases/firebase.storage/fresh25.firebasestorage.app","rulesetName":"projects/fresh25/rulesets/16d68fd4-f577-49f6-a710-7e6067c0b8d9","createTime":"2025-08-03T20:14:08.802960Z","updateTime":"2025-08-24T15:05:44.831626Z"}]}
+[debug] [2025-08-24T15:24:40.342Z] Checked if tokens are valid: true, expires at: 1756052678325
+[debug] [2025-08-24T15:24:40.342Z] Checked if tokens are valid: true, expires at: 1756052678325
+[debug] [2025-08-24T15:24:40.342Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/fresh25/rulesets/9f8545c8-6e15-45ed-89a2-d48b02d0c227 [none]
+[debug] [2025-08-24T15:24:40.485Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/fresh25/rulesets/9f8545c8-6e15-45ed-89a2-d48b02d0c227 200
+[debug] [2025-08-24T15:24:40.485Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/fresh25/rulesets/9f8545c8-6e15-45ed-89a2-d48b02d0c227 [omitted]
+[debug] [2025-08-24T15:24:40.487Z] Checked if tokens are valid: true, expires at: 1756052678325
+[debug] [2025-08-24T15:24:40.487Z] Checked if tokens are valid: true, expires at: 1756052678325
+[debug] [2025-08-24T15:24:40.487Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/fresh25 [none]
+[debug] [2025-08-24T15:24:40.587Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/fresh25 200
+[debug] [2025-08-24T15:24:40.587Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/fresh25 {"projectNumber":"382962850342","projectId":"fresh25","lifecycleState":"ACTIVE","name":"Fresh25","labels":{"firebase":"enabled","firebase-core":"disabled","generative-language":"enabled"},"createTime":"2025-08-03T03:59:13.559518Z"}
+[debug] [2025-08-24T15:24:40.587Z] Checked if tokens are valid: true, expires at: 1756052678325
+[debug] [2025-08-24T15:24:40.587Z] Checked if tokens are valid: true, expires at: 1756052678325
+[debug] [2025-08-24T15:24:40.587Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/382962850342:getIamPolicy [none]
+[debug] [2025-08-24T15:24:40.802Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/382962850342:getIamPolicy 200
+[debug] [2025-08-24T15:24:40.802Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/382962850342:getIamPolicy {"version":1,"etag":"BwY9HeLNbyc=","bindings":[{"role":"roles/aiplatform.admin","members":["serviceAccount:veo-451@fresh25.iam.gserviceaccount.com"]},{"role":"roles/aiplatform.serviceAgent","members":["serviceAccount:veo-451@fresh25.iam.gserviceaccount.com"]},{"role":"roles/artifactregistry.serviceAgent","members":["serviceAccount:service-382962850342@gcp-sa-artifactregistry.iam.gserviceaccount.com"]},{"role":"roles/cloudbuild.builds.builder","members":["serviceAccount:382962850342@cloudbuild.gserviceaccount.com"]},{"role":"roles/cloudbuild.serviceAgent","members":["serviceAccount:service-382962850342@gcp-sa-cloudbuild.iam.gserviceaccount.com"]},{"role":"roles/cloudfunctions.serviceAgent","members":["serviceAccount:service-382962850342@gcf-admin-robot.iam.gserviceaccount.com"]},{"role":"roles/cloudscheduler.serviceAgent","members":["serviceAccount:service-382962850342@gcp-sa-cloudscheduler.iam.gserviceaccount.com"]},{"role":"roles/containerregistry.ServiceAgent","members":["serviceAccount:service-382962850342@containerregistry.iam.gserviceaccount.com"]},{"role":"roles/developerconnect.readTokenAccessor","members":["serviceAccount:firebase-app-hosting-compute@fresh25.iam.gserviceaccount.com"]},{"role":"roles/developerconnect.serviceAgent","members":["serviceAccount:service-382962850342@gcp-sa-devconnect.iam.gserviceaccount.com"]},{"role":"roles/editor","members":["serviceAccount:382962850342-compute@developer.gserviceaccount.com","serviceAccount:382962850342@cloudservices.gserviceaccount.com","serviceAccount:fresh25@appspot.gserviceaccount.com"]},{"role":"roles/firebase.managementServiceAgent","members":["serviceAccount:service-382962850342@gcp-sa-firebase.iam.gserviceaccount.com"]},{"role":"roles/firebase.sdkAdminServiceAgent","members":["serviceAccount:firebase-adminsdk-fbsvc@fresh25.iam.gserviceaccount.com","serviceAccount:firebase-app-hosting-compute@fresh25.iam.gserviceaccount.com"]},{"role":"roles/firebaseapphosting.computeRunner","members":["serviceAccount:firebase-app-hosting-compute@fresh25.iam.gserviceaccount.com"]},{"role":"roles/firebaseapphosting.serviceAgent","members":["serviceAccount:service-382962850342@gcp-sa-firebaseapphosting.iam.gserviceaccount.com"]},{"role":"roles/firebaseauth.admin","members":["serviceAccount:firebase-adminsdk-fbsvc@fresh25.iam.gserviceaccount.com"]},{"role":"roles/firebasemods.serviceAgent","members":["serviceAccount:service-382962850342@gcp-sa-firebasemods.iam.gserviceaccount.com"]},{"role":"roles/firebaserules.firestoreServiceAgent","members":["serviceAccount:service-382962850342@gcp-sa-firebasestorage.iam.gserviceaccount.com"]},{"role":"roles/firebaserules.system","members":["serviceAccount:service-382962850342@firebase-rules.iam.gserviceaccount.com"]},{"role":"roles/firebasestorage.serviceAgent","members":["serviceAccount:service-382962850342@gcp-sa-firebasestorage.iam.gserviceaccount.com"]},{"role":"roles/firestore.serviceAgent","members":["serviceAccount:service-382962850342@gcp-sa-firestore.iam.gserviceaccount.com"]},{"role":"roles/iam.serviceAccountTokenCreator","members":["serviceAccount:firebase-adminsdk-fbsvc@fresh25.iam.gserviceaccount.com"]},{"role":"roles/owner","members":["user:frshfrnt@gmail.com"]},{"role":"roles/run.serviceAgent","members":["serviceAccount:service-382962850342@serverless-robot-prod.iam.gserviceaccount.com"]},{"role":"roles/secretmanager.admin_withcond_3c9b36cc45768cca16bb","members":["serviceAccount:service-382962850342@gcp-sa-devconnect.iam.gserviceaccount.com"]},{"role":"roles/storage.admin","members":["serviceAccount:firebase-adminsdk-fbsvc@fresh25.iam.gserviceaccount.com"]}]}
+[info] i  storage: uploading rules storage.rules... 
+[debug] [2025-08-24T15:24:40.809Z] Checked if tokens are valid: true, expires at: 1756052678325
+[debug] [2025-08-24T15:24:40.810Z] Checked if tokens are valid: true, expires at: 1756052678325
+[debug] [2025-08-24T15:24:40.810Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/fresh25/rulesets [none]
+[debug] [2025-08-24T15:24:40.810Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/fresh25/rulesets [omitted]
+[debug] [2025-08-24T15:24:41.081Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/fresh25/rulesets 200
+[debug] [2025-08-24T15:24:41.081Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/fresh25/rulesets {"name":"projects/fresh25/rulesets/ac0090d3-487d-4d51-a38b-d1885998f41c","source":{"files":[{"content":"rules_version = '2';\n\n// Craft rules based on data in your Firestore database\n// allow write: if firestore.get(\n//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;\nservice firebase.storage {\n  match /b/{bucket}/o {\n    match /{allPaths=**} {\n      allow read, write: if request.auth != null;\n    }\n  }\n}\n","name":"storage.rules"}]},"createTime":"2025-08-24T15:24:40.999791Z","metadata":{"services":["firebase.storage"]}}
+[debug] [2025-08-24T15:24:41.081Z] [rules] created ruleset projects/fresh25/rulesets/ac0090d3-487d-4d51-a38b-d1885998f41c
+[debug] [2025-08-24T15:24:41.082Z] [rules] releasing firebase.storage/fresh25.firebasestorage.app with ruleset projects/fresh25/rulesets/ac0090d3-487d-4d51-a38b-d1885998f41c
+[debug] [2025-08-24T15:24:41.082Z] Checked if tokens are valid: true, expires at: 1756052678325
+[debug] [2025-08-24T15:24:41.082Z] Checked if tokens are valid: true, expires at: 1756052678325
+[debug] [2025-08-24T15:24:41.082Z] >>> [apiv2][query] PATCH https://firebaserules.googleapis.com/v1/projects/fresh25/releases/firebase.storage/fresh25.firebasestorage.app [none]
+[debug] [2025-08-24T15:24:41.082Z] >>> [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/fresh25/releases/firebase.storage/fresh25.firebasestorage.app {"release":{"name":"projects/fresh25/releases/firebase.storage/fresh25.firebasestorage.app","rulesetName":"projects/fresh25/rulesets/ac0090d3-487d-4d51-a38b-d1885998f41c"}}
+[debug] [2025-08-24T15:24:41.436Z] <<< [apiv2][status] PATCH https://firebaserules.googleapis.com/v1/projects/fresh25/releases/firebase.storage/fresh25.firebasestorage.app 200
+[debug] [2025-08-24T15:24:41.436Z] <<< [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/fresh25/releases/firebase.storage/fresh25.firebasestorage.app {"name":"projects/fresh25/releases/firebase.storage/fresh25.firebasestorage.app","rulesetName":"projects/fresh25/rulesets/ac0090d3-487d-4d51-a38b-d1885998f41c","createTime":"2025-08-03T20:14:08.802960Z","updateTime":"2025-08-24T15:24:41.348009Z"}
+[debug] [2025-08-24T15:24:41.436Z] [rules] updated release projects/fresh25/releases/firebase.storage/fresh25.firebasestorage.app
+[info] +  storage: released rules storage.rules to firebase.storage 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/fresh25/overview
+[debug] [2025-08-24T15:24:42.596Z] Error: EBUSY: resource busy or locked, unlink 'C:\Users\test\fresh\freshchef-main\firebase-debug.log'
+    at Object.unlinkSync (node:fs:1953:11)
+    at process.<anonymous> (C:\Users\test\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\cli.js:44:16)
+    at process.emit (node:events:530:35)
+    at process.exit (node:internal/process/per_thread:194:15)
+    at C:\Users\test\AppData\Roaming\npm\node_modules\firebase-tools\lib\command.js:123:25
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[error] 
+[error] Error: An unexpected error has occurred.
