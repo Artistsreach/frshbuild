@@ -10,6 +10,7 @@ import { createMintologyProject } from "@/actions/create-mintology-project";
 import { toast } from "sonner";
 import { getStorage as getFirebaseStorage } from "@/lib/firebase";
 import { ref as fbRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { toPng } from "html-to-image";
 
 export function MintNftModal({ appId, appName, projectId }: { appId: string; appName: string; projectId?: string }) {
   const [open, setOpen] = useState(false);
@@ -36,19 +37,19 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
       const h2c = (window as any).html2canvas as undefined | ((node: HTMLElement, opts?: any) => Promise<HTMLCanvasElement | null>);
       let dataUrl: string | null = null;
 
-      // 1) Capture ONLY the server window area (preview container)
-      if (h2c) {
-        const el = document.getElementById("app-preview-container");
-        if (el) {
-          const canvas = await h2c(el as HTMLElement, {
-            backgroundColor: null,
-            useCORS: true,
-            scale: 1,
-            logging: false,
-            windowWidth: (el as HTMLElement).clientWidth,
-            windowHeight: (el as HTMLElement).clientHeight,
+      // 1) Preferred: capture ONLY the server window area with html-to-image
+      const el = document.getElementById("app-preview-container");
+      if (el) {
+        try {
+          dataUrl = await toPng(el as HTMLElement, {
+            cacheBust: true,
+            pixelRatio: 1,
+            canvasWidth: (el as HTMLElement).clientWidth,
+            canvasHeight: (el as HTMLElement).clientHeight,
+            backgroundColor: undefined,
           });
-          if (canvas) dataUrl = canvas.toDataURL("image/webp", 0.9);
+        } catch (e) {
+          console.debug("html-to-image failed, will fallback", e);
         }
       }
 
@@ -60,7 +61,7 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
         }
       }
 
-      // 3) Last resort: capture the entire page (may hit oklch issues)
+      // 3) Last resort: capture the entire page with html2canvas (may hit oklch issues)
       if (!dataUrl && h2c) {
         const root = document.body as HTMLElement;
         const canvas = await h2c(root, {
