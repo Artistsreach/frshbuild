@@ -29,13 +29,28 @@ export function MintNftModal({ appId, appName, projectId }: { appId: string; app
     setCapturing(true);
     try {
       const fn = (window as any).captureAppScreenshot as undefined | (() => Promise<string | null>);
-      if (!fn) {
-        toast.error("Screenshot function not available. Open the app preview to enable it.");
-        return;
+      let dataUrl: string | null = null;
+      if (fn) {
+        dataUrl = await fn();
       }
-      const dataUrl = await fn();
+      // Fallback: try capturing the preview container directly
       if (!dataUrl) {
-        toast.error("Failed to capture screenshot");
+        const el = document.getElementById("app-preview-container");
+        const h2c = (window as any).html2canvas as undefined | ((node: HTMLElement, opts?: any) => Promise<HTMLCanvasElement | null>);
+        if (el && h2c) {
+          const canvas = await h2c(el as HTMLElement, {
+            backgroundColor: null,
+            useCORS: true,
+            scale: 0.8,
+            logging: false,
+            windowWidth: (el as HTMLElement).clientWidth,
+            windowHeight: (el as HTMLElement).clientHeight,
+          });
+          if (canvas) dataUrl = canvas.toDataURL("image/webp", 0.9);
+        }
+      }
+      if (!dataUrl) {
+        toast.error("Failed to capture screenshot. Make sure the preview is visible on this page.");
         return;
       }
       setScreenshot(dataUrl);

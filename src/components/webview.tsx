@@ -148,7 +148,7 @@ export default function WebView(props: {
           )}
         </div>
       </div>
-      <div ref={containerRef} className="flex-1 overflow-auto flex items-center justify-center p-3">
+      <div ref={containerRef} id="app-preview-container" className="flex-1 overflow-auto flex items-center justify-center p-3">
         {/*
           Wrapper that controls the size/aspect ratio. We rely on CSS aspect-ratio
           so the FreestyleDevServer fills the wrapper and adapts per selected device.
