@@ -12,11 +12,10 @@ import { UserApps } from "@/components/user-apps";
 import { ModeToggle } from "@/components/theme-toggle";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { PromptInputTextareaWithTypingAnimation } from "@/components/prompt-input";
-import { getUserCredits } from "@/actions/get-user-credits";
 import { Banknote, CoinsIcon } from "lucide-react";
-import { PurchaseModal } from "@/components/purchase-modal";
 import { getUser } from "@/actions/get-user";
 import Stars from "@/components/ui/stars";
+import { useFirebaseCredits } from "@/hooks/use-firebase-credits";
 
 const queryClient = new QueryClient();
 
@@ -25,20 +24,15 @@ function HomePageContent() {
   const [framework, setFramework] = useState("nextjs");
   const [isLoading, setIsLoading] = useState(false);
   const [fundingLoading, setFundingLoading] = useState(false);
-  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
   const router = useRouter();
   const submittedRef = useRef(false);
-
-  const { data: credits } = useQuery({
-    queryKey: ["credits"],
-    queryFn: () => getUserCredits(),
-    refetchInterval: 5000,
-  });
 
   const { data: user } = useQuery({
     queryKey: ["user"],
     queryFn: () => getUser(),
   });
+
+  const { credits: firebaseCredits, loading: creditsLoading, hasGoogleAccount } = useFirebaseCredits();
 
   const handleSubmit = useCallback(async (overridePrompt?: string) => {
     if (submittedRef.current) return;
@@ -120,20 +114,28 @@ function HomePageContent() {
         />
         <div className="flex w-full justify-end items-center">
           <div className="flex items-center gap-2 flex-1 sm:w-80 justify-end">
-            <>
-              <div
-                className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 cursor-pointer"
-                onClick={() => setPurchaseModalOpen(true)}
+            {user && (
+              <div 
+                className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                onClick={() => {
+                  if (!hasGoogleAccount) {
+                    window.location.href = "/handler/account-settings";
+                  }
+                }}
+                title={!hasGoogleAccount ? "Click to link Google account" : "Firebase credits"}
               >
                 <CoinsIcon className="h-4 w-4 dark:text-yellow-400" />
-                {credits}
+                {creditsLoading ? (
+                  <span className="animate-pulse">Loading...</span>
+                ) : firebaseCredits ? (
+                  firebaseCredits.credits.toLocaleString()
+                ) : hasGoogleAccount ? (
+                  "0"
+                ) : (
+                  <span className="text-xs opacity-75">Link Google</span>
+                )}
               </div>
-              <PurchaseModal
-                open={purchaseModalOpen}
-                onOpenChange={setPurchaseModalOpen}
-                userId={user?.id ?? ""}
-              />
-            </>
+            )}
             <ModeToggle />
             <UserButton
               extraItems={[
