@@ -2,7 +2,7 @@ import { getApp } from "@/actions/get-app";
 import { freestyle } from "@/lib/freestyle";
 import { getAppIdFromHeaders } from "@/lib/utils";
 import { MCPClient } from "@mastra/mcp";
-import { builderAgent, builderAgentFallback } from "@/mastra/agents/builder";
+import { builderAgent } from "@/mastra/agents/builder";
 import { UIMessage } from "ai";
 
 // "fix" mastra mcp bug
@@ -149,172 +149,58 @@ export async function sendMessage(
     threadId: appId,
   });
 
-  let stream;
-  try {
-    stream = await builderAgent.stream([message], {
-      memory: {
-        thread: { id: appId },
-        resource: appId,
-      },
-      maxSteps: 200,
-      maxRetries: 2,
-      maxOutputTokens: 64000,
-      toolsets,
-      async onChunk() {
-        if (Date.now() - lastKeepAlive > 5000) {
-          lastKeepAlive = Date.now();
-          redisPublisher.set(`app:${appId}:stream-state`, "running", {
-            EX: 15,
-          });
-        }
-      },
-      async onStepFinish(step) {
-        messageList.add(step.response.messages, "response");
+  const stream = await builderAgent.stream([message], {
+    memory: {
+      thread: { id: appId },
+      resource: appId,
+    },
+    maxSteps: 200,
+    maxRetries: 2,
+    maxOutputTokens: 64000,
+    toolsets,
+    async onChunk() {
+      if (Date.now() - lastKeepAlive > 5000) {
+        lastKeepAlive = Date.now();
+        redisPublisher.set(`app:${appId}:stream-state`, "running", {
+          EX: 15,
+        });
+      }
+    },
+    async onStepFinish(step) {
+      messageList.add(step.response.messages, "response");
 
-        if (shouldAbort) {
-          await redisPublisher.del(`app:${appId}:stream-state`);
-          await redisPublisher.set(`app:${appId}:needs-resume`, "1", { EX: 60 * 10 });
-          controller.abort("Aborted stream after step finish");
-          const messages = messageList.drainUnsavedMessages();
-          console.log(messages);
-          const memory = await builderAgent.getMemory();
-          await memory?.saveMessages({
-            messages,
-          });
-        }
-      },
-      onError: async (error) => {
-        // Detect rate limit or transient API errors and switch to fallback model
-        const msg = String(error?.message || error);
-        const isRateLimit = msg.includes("rate limit") || msg.includes("rate_limit_exceeded") || msg.includes("429");
-        const isRetryExhausted = msg.includes("AI_RetryError") || msg.includes("maxRetriesExceeded");
-        if (isRateLimit || isRetryExhausted) {
-          console.warn("Switching to gpt-4o due to error:", msg);
-          try {
-            const fallback = await builderAgentFallback.stream([message], {
-              memory: {
-                thread: { id: appId },
-                resource: appId,
-              },
-              maxSteps: 200,
-              maxRetries: 2,
-              maxOutputTokens: 64000,
-              toolsets,
-              async onChunk() {
-                if (Date.now() - lastKeepAlive > 5000) {
-                  lastKeepAlive = Date.now();
-                  redisPublisher.set(`app:${appId}:stream-state`, "running", { EX: 15 });
-                }
-              },
-              async onStepFinish(step) {
-                messageList.add(step.response.messages, "response");
-                if (shouldAbort) {
-                  await redisPublisher.del(`app:${appId}:stream-state`);
-                  controller.abort("Aborted stream after step finish (fallback)");
-                  const messages = messageList.drainUnsavedMessages();
-                  const memory = await builderAgentFallback.getMemory();
-                  await memory?.saveMessages({ messages });
-                }
-              },
-              onError: async (fallbackError) => {
-                await redisPublisher.del(`app:${appId}:stream-state`);
-                await redisPublisher.set(`app:${appId}:needs-resume`, "1", { EX: 60 * 10 });
-                console.error("Fallback Error:", fallbackError);
-              },
-              onFinish: async () => {
-                await redisPublisher.del(`app:${appId}:stream-state`);
-                if (!shouldAbort) {
-                  const attemptsRaw = await redisPublisher.get(`app:${appId}:resume-attempts`);
-                  const attempts = attemptsRaw ? parseInt(attemptsRaw, 10) : 0;
-                  if (attempts < 2) {
-                    await redisPublisher.set(`app:${appId}:needs-resume`, "1", { EX: 60 * 10 });
-                  }
-                }
-                await mcp.disconnect();
-              },
-              abortSignal: controller.signal,
-            });
-            // Replace the active stream so the client continues without interruption
-            await setStream(appId, message, fallback as any);
-            return;
-          } catch (fallbackStartErr) {
-            console.error("Failed to start fallback stream:", fallbackStartErr);
-          }
-        }
-        // Default cleanup path
-        await mcp.disconnect();
+      if (shouldAbort) {
         await redisPublisher.del(`app:${appId}:stream-state`);
         await redisPublisher.set(`app:${appId}:needs-resume`, "1", { EX: 60 * 10 });
-        console.error("Error:", error);
-      },
-      onFinish: async () => {
-        await redisPublisher.del(`app:${appId}:stream-state`);
-        // Mark for auto-resume if no explicit abort occurred and no recent resume attempt
-        if (!shouldAbort) {
-          const attemptsRaw = await redisPublisher.get(`app:${appId}:resume-attempts`);
-          const attempts = attemptsRaw ? parseInt(attemptsRaw, 10) : 0;
-          if (attempts < 2) {
-            await redisPublisher.set(`app:${appId}:needs-resume`, "1", { EX: 60 * 10 });
-          }
-        }
-        await mcp.disconnect();
-      },
-      abortSignal: controller.signal,
-    });
-  } catch (err) {
-    console.warn("gpt-5 stream failed, falling back to gpt-4o:", err);
-    stream = await builderAgentFallback.stream([message], {
-      memory: {
-        thread: { id: appId },
-        resource: appId,
-      },
-      maxSteps: 200,
-      maxRetries: 2,
-      maxOutputTokens: 64000,
-      toolsets,
-      async onChunk() {
-        if (Date.now() - lastKeepAlive > 5000) {
-          lastKeepAlive = Date.now();
-          redisPublisher.set(`app:${appId}:stream-state`, "running", {
-            EX: 15,
-          });
-        }
-      },
-      async onStepFinish(step) {
-        messageList.add(step.response.messages, "response");
-
-        if (shouldAbort) {
-          await redisPublisher.del(`app:${appId}:stream-state`);
+        controller.abort("Aborted stream after step finish");
+        const messages = messageList.drainUnsavedMessages();
+        console.log(messages);
+        const memory = await builderAgent.getMemory();
+        await memory?.saveMessages({
+          messages,
+        });
+      }
+    },
+    onError: async (error) => {
+      await mcp.disconnect();
+      await redisPublisher.del(`app:${appId}:stream-state`);
+      await redisPublisher.set(`app:${appId}:needs-resume`, "1", { EX: 60 * 10 });
+      console.error("Error:", error);
+    },
+    onFinish: async () => {
+      await redisPublisher.del(`app:${appId}:stream-state`);
+      // Mark for auto-resume if no explicit abort occurred and no recent resume attempt
+      if (!shouldAbort) {
+        const attemptsRaw = await redisPublisher.get(`app:${appId}:resume-attempts`);
+        const attempts = attemptsRaw ? parseInt(attemptsRaw, 10) : 0;
+        if (attempts < 2) {
           await redisPublisher.set(`app:${appId}:needs-resume`, "1", { EX: 60 * 10 });
-          controller.abort("Aborted stream after step finish");
-          const messages = messageList.drainUnsavedMessages();
-          console.log(messages);
-          const memory = await builderAgentFallback.getMemory();
-          await memory?.saveMessages({
-            messages,
-          });
         }
-      },
-      onError: async (error) => {
-        await mcp.disconnect();
-        await redisPublisher.del(`app:${appId}:stream-state`);
-        await redisPublisher.set(`app:${appId}:needs-resume`, "1", { EX: 60 * 10 });
-        console.error("Fallback Error:", error);
-      },
-      onFinish: async () => {
-        await redisPublisher.del(`app:${appId}:stream-state`);
-        if (!shouldAbort) {
-          const attemptsRaw = await redisPublisher.get(`app:${appId}:resume-attempts`);
-          const attempts = attemptsRaw ? parseInt(attemptsRaw, 10) : 0;
-          if (attempts < 2) {
-            await redisPublisher.set(`app:${appId}:needs-resume`, "1", { EX: 60 * 10 });
-          }
-        }
-        await mcp.disconnect();
-      },
-      abortSignal: controller.signal,
-    });
-  }
+      }
+      await mcp.disconnect();
+    },
+    abortSignal: controller.signal,
+  });
 
   console.log("Stream created for appId:", appId, "with prompt:", message);
 
