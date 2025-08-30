@@ -1,0 +1,47 @@
+import { initializeApp, getApps, cert } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+
+// Initialize Firebase Admin if not already initialized
+function getFirebaseAdmin() {
+  if (getApps().length === 0) {
+    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+    if (!serviceAccount) {
+      console.warn("FIREBASE_SERVICE_ACCOUNT_KEY environment variable is missing");
+      // For development/testing, we can continue without Firebase Admin
+      if (process.env.NODE_ENV === "development") {
+        console.warn("Running in development mode without Firebase Admin");
+        return null;
+      }
+      throw new Error("FIREBASE_SERVICE_ACCOUNT_KEY environment variable is required");
+    }
+
+    try {
+      const serviceAccountJson = JSON.parse(serviceAccount);
+      console.log("Firebase Admin: Initializing with project ID:", serviceAccountJson.project_id);
+
+      initializeApp({
+        credential: cert(serviceAccountJson),
+        projectId: "fresh25",
+      });
+
+      console.log("Firebase Admin: Successfully initialized");
+    } catch (error) {
+      console.error("Firebase Admin: Error parsing service account:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.warn("Running in development mode without Firebase Admin");
+        return null;
+      }
+      throw new Error("Invalid Firebase service account configuration");
+    }
+  }
+  
+  try {
+    return getAuth();
+  } catch (error) {
+    console.error("Firebase Admin: Error getting auth:", error);
+    return null;
+  }
+}
+
+export const auth = getFirebaseAdmin();

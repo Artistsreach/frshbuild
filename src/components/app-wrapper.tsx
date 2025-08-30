@@ -229,19 +229,20 @@ export default function AppWrapper({
             <Chat
               topBar={
                 sidebarVisible ? (
-                  <TopBar
-                    appName={appName}
-                    repoId={repoId}
-                    isPublic={isPublic}
-                    consoleUrl={consoleUrl}
-                    codeServerUrl={codeServerUrl}
-                    appId={appId}
-                    isRecreatable={isRecreatable}
-                    isCrowdfunded={isCrowdfunded}
-                    domain={domain}
-                    isOwner={isOwner}
-                    stripeProductId={stripeProductId}
-                  >
+                                  <TopBar
+                  appName={appName}
+                  repoId={repoId}
+                  isPublic={isPublic}
+                  consoleUrl={consoleUrl}
+                  codeServerUrl={codeServerUrl}
+                  appId={appId}
+                  isRecreatable={isRecreatable}
+                  isCrowdfunded={isCrowdfunded}
+                  domain={domain}
+                  isOwner={isOwner}
+                  stripeProductId={stripeProductId}
+                  baseId={baseId}
+                >
                     {topBarActions}
                   </TopBar>
                 ) : null

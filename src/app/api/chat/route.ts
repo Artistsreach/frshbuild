@@ -41,14 +41,14 @@ export async function POST(req: NextRequest) {
     credits = 100;
   }
 
-  if (credits < 15) {
+  if (credits < 10) {
     return new Response("Not enough credits", { status: 402 });
   }
 
   await user.update({
     serverMetadata: {
       ...user.serverMetadata,
-      credits: credits - 15,
+      credits: credits - 10,
     },
   });
 

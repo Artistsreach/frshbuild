@@ -1,7 +1,5 @@
-"use server";
-
 import { getApp } from "@/actions/get-app";
-import AppWrapper from "../../../components/app-wrapper";
+import AppWrapper from "../../../components/app-wrapper-simple";
 import { freestyle } from "@/lib/freestyle";
 import { db } from "@/lib/db";
 import { appSubscriptions, appUsers, apps } from "@/db/schema";
@@ -17,25 +15,30 @@ import { DeploymentStatus } from "@/components/deployment-status";
 import { ExpoDeployModal } from "@/components/expo-deploy-modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+// Force dynamic rendering to avoid static generation issues with cookies
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function AppPage({
   params,
 }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ [key: string]: string | string[] }>;
 }) {
-  const { id } = await params;
+  try {
+    const { id } = await params;
 
-  // Fetch the app first to determine if it's public
-  const app = await getApp(id).catch(() => undefined);
+    // Fetch the app first to determine if it's public
+    const app = await getApp(id).catch(() => undefined);
 
-  if (!app) {
-    return <ProjectNotFound />;
-  }
+    if (!app) {
+      return <ProjectNotFound />;
+    }
 
   // Track subscriber flag for client gating
   let isSubscriber = false;
 
-  const isEffectivelyPublic = app.info.is_public || !!app.info.stripeProductId;
+  const isEffectivelyPublic = app?.info?.is_public || !!app?.info?.stripeProductId;
 
   // If the app is not public, require authentication and membership
   if (!isEffectivelyPublic) {
@@ -57,7 +60,7 @@ export default async function AppPage({
     }
   }
 
-  if (app.info.requires_subscription) {
+  if (app?.info?.requires_subscription) {
     const user = await getUser();
     if (!user) {
       return <SubscriptionRequired />;
@@ -103,71 +106,86 @@ export default async function AppPage({
     }
   }
 
-  const showRecreate = app.info.is_recreatable && !isOwner;
+  const showRecreate = app?.info?.is_recreatable && !isOwner;
 
-  const { uiMessages } = await memory.query({
-    threadId: id,
-    resourceId: id,
-  });
+  let uiMessages = [];
+  try {
+    const result = await memory.query({
+      threadId: id,
+      resourceId: id,
+    });
+    uiMessages = result.uiMessages || [];
+  } catch (error) {
+    console.error("Error querying memory:", error);
+    uiMessages = [];
+  }
 
   // Request dev server with a brief retry to avoid SSR crash right after recreation
   let codeServerUrl = "";
   let ephemeralUrl = "";
-  async function sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-  try {
-    const res = await freestyle.requestDevServer({ repoId: app?.info.gitRepo });
-    codeServerUrl = res.codeServerUrl;
-    ephemeralUrl = res.ephemeralUrl;
-  } catch (e1) {
+  
+  if (app?.info?.gitRepo) {
+    async function sleep(ms: number) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+    
     try {
-      await sleep(1000);
-      const res2 = await freestyle.requestDevServer({ repoId: app?.info.gitRepo });
-      codeServerUrl = res2.codeServerUrl;
-      ephemeralUrl = res2.ephemeralUrl;
-    } catch (e2) {
-      console.error("Dev server request failed twice for app", app?.info.id, e2);
-      // Allow page to render; client WebView can recover/request later
-      codeServerUrl = "";
-      ephemeralUrl = "";
+      const res = await freestyle.requestDevServer({ repoId: app.info.gitRepo });
+      codeServerUrl = res.codeServerUrl || "";
+      ephemeralUrl = res.ephemeralUrl || "";
+    } catch (e1) {
+      try {
+        await sleep(1000);
+        const res2 = await freestyle.requestDevServer({ repoId: app.info.gitRepo });
+        codeServerUrl = res2.codeServerUrl || "";
+        ephemeralUrl = res2.ephemeralUrl || "";
+      } catch (e2) {
+        console.error("Dev server request failed twice for app", app?.info?.id, e2);
+        // Allow page to render; client WebView can recover/request later
+        codeServerUrl = "";
+        ephemeralUrl = "";
+      }
     }
   }
 
   console.log("requested dev server");
 
   // Use the previewDomain from the database, or fall back to a generated domain
-  const domain = app.info.previewDomain;
+  const domain = app?.info?.previewDomain;
 
   return (
     <AppWrapper
-      baseId={app.info.baseId}
+      baseId={app?.info?.baseId || ""}
       codeServerUrl={codeServerUrl}
-      appName={app.info.name}
+      appName={app?.info?.name || ""}
       initialMessages={uiMessages}
       consoleUrl={ephemeralUrl ? ephemeralUrl + "/__console" : ""}
-      repo={app.info.gitRepo}
-      appId={app.info.id}
-      repoId={app.info.gitRepo}
+      repo={app?.info?.gitRepo || ""}
+      appId={app?.info?.id || ""}
+      repoId={app?.info?.gitRepo || ""}
       domain={domain ?? undefined}
-      running={(await chatState(app.info.id)).state === "running"}
+      running={false}
       showRecreate={showRecreate}
-      sourceAppId={app.info.id}
+      sourceAppId={app?.info?.id || ""}
       isPublic={isEffectivelyPublic}
       isOwner={isOwner}
-      isRecreatable={app.info.is_recreatable}
-      isCrowdfunded={!!app.info.stripeProductId}
-      stripeProductId={app.info.stripeProductId ?? undefined}
-      requiresSubscription={app.info.requires_subscription}
+      isRecreatable={app?.info?.is_recreatable || false}
+      isCrowdfunded={!!app?.info?.stripeProductId}
+      stripeProductId={app?.info?.stripeProductId ?? undefined}
+      requiresSubscription={app?.info?.requires_subscription || false}
       isSubscriber={isSubscriber}
       topBarActions={
-        showRecreate && app.info.id ? (
-          <RecreateButton sourceAppId={app.info.id} />
+        showRecreate && app?.info?.id ? (
+          <RecreateButton sourceAppId={app?.info?.id} />
         ) : null
-      }
-    />
-  );
-}
+             }
+     />
+   );
+   } catch (error) {
+     console.error("Error in AppPage:", error);
+     return <ProjectNotFound />;
+   }
+ }
 
 function ProjectNotFound() {
   return (

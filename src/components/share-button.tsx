@@ -22,6 +22,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { publishApp } from "@/actions/publish-app";
 import { setAppVisibility } from "@/actions/set-app-visibility";
 import { setAppRecreatable } from "@/actions/set-app-recreatable";
@@ -54,10 +55,12 @@ export function ShareButton({
   // The domain may be undefined if no previewDomain exists in the database
   const [isPublishing, setIsPublishing] = useState(false);
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
+  const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [publicState, setPublicState] = useState(isPublic);
   const [recreatable, setRecreatable] = useState(isRecreatable);
   const [requiresSubscriptionState, setRequiresSubscriptionState] = useState(requiresSubscription);
   const [showAppStoreModal, setShowAppStoreModal] = useState(false);
+  const [appNameState, setAppNameState] = useState(appName);
 
   // Check if this is an Expo app based on baseId
   const isExpoApp = baseId?.includes('expo') || baseId?.includes('react-native');
@@ -128,6 +131,26 @@ export function ShareButton({
     }
   };
 
+  const handleUpdateAppName = async () => {
+    if (!appNameState.trim()) {
+      toast.error("App name cannot be empty");
+      return;
+    }
+    
+    try {
+      setIsUpdatingName(true);
+      // Import the action dynamically to avoid circular dependencies
+      const { updateAppName } = await import("@/actions/update-app-name");
+      await updateAppName({ appId, name: appNameState.trim() });
+      toast.success("App name updated successfully!");
+    } catch (error) {
+      toast.error("Failed to update app name");
+      console.error(error);
+    } finally {
+      setIsUpdatingName(false);
+    }
+  };
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -151,6 +174,34 @@ export function ShareButton({
         </DialogHeader>
 
         <div className="flex flex-col space-y-6 mt-4">
+          {/* App Name Edit */}
+          <div>
+            <Label htmlFor="app-name" className="mb-2 block">
+              App Name
+            </Label>
+            <div className="grid grid-cols-[1fr_auto] w-full overflow-hidden border border-input rounded-md">
+              <Input
+                id="app-name"
+                value={appNameState}
+                onChange={(e) => setAppNameState(e.target.value)}
+                placeholder="Enter app name"
+                className="border-0 focus-visible:ring-0"
+              />
+              <Button
+                variant="ghost"
+                className="h-10 px-3 border-l border-input rounded-l-none"
+                onClick={handleUpdateAppName}
+                disabled={isUpdatingName || appNameState.trim() === appName}
+              >
+                {isUpdatingName ? (
+                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Save"
+                )}
+              </Button>
+            </div>
+          </div>
+
           {domain ? (
             <>
               <div>

@@ -32,11 +32,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true, duplicated: true });
   }
 
+  console.log(`Processing webhook event: ${event.type}`);
+
   if (event.type === "customer.subscription.deleted") {
     // Decrement subscribed users on subscription cancellation
     const subscription = event.data.object as Stripe.Subscription;
     const appId = subscription.metadata?.appId;
     const userId = subscription.metadata?.userId;
+    
+    console.log(`Subscription deleted for app: ${appId}, user: ${userId}`);
+    
     if (appId) {
       await db
         .update(appsTable)
@@ -51,25 +56,37 @@ export async function POST(req: NextRequest) {
     }
   } else if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-    // If this is a subscription for an app, increment subscribed_users
-    const appId = session.metadata?.appId;
-    const userId = (session.metadata?.userId || session.client_reference_id) ?? undefined;
-    if (session.mode === "subscription" && appId) {
-      await db
-        .update(appsTable)
-        .set({ subscribedUsers: sql`${appsTable.subscribedUsers} + 1` })
-        .where(eq(appsTable.id, appId));
-      if (userId) {
-        // Upsert subscription mapping
+    console.log(`Checkout completed: ${session.id}, mode: ${session.mode}`);
+    
+    // Handle subscription checkouts
+    if (session.mode === "subscription") {
+      const appId = session.metadata?.appId;
+      const userId = session.metadata?.userId || session.client_reference_id;
+      
+      console.log(`Subscription checkout for app: ${appId}, user: ${userId}`);
+      
+      if (appId) {
+        // Increment subscribed users count
         await db
-          .insert(appSubscriptions)
-          .values({ appId, userId })
-          .onConflictDoNothing({ target: [appSubscriptions.userId, appSubscriptions.appId] });
+          .update(appsTable)
+          .set({ subscribedUsers: sql`${appsTable.subscribedUsers} + 1` })
+          .where(eq(appsTable.id, appId));
+        
+        if (userId) {
+          // Upsert subscription mapping
+          await db
+            .insert(appSubscriptions)
+            .values({ appId, userId })
+            .onConflictDoNothing({ target: [appSubscriptions.userId, appSubscriptions.appId] });
+        }
       }
     } else {
-      // Fallback: existing credits top-up flow using client_reference_id
+      // Handle one-time payments (credits)
       const userId = session.client_reference_id;
       const amount = session.amount_total;
+      
+      console.log(`One-time payment for user: ${userId}, amount: ${amount}`);
+      
       if (userId && amount) {
         const credits = amount / 10; // $5 for 500 credits
         await db
@@ -79,6 +96,39 @@ export async function POST(req: NextRequest) {
           })
           .where(eq(appUsers.userId, userId));
       }
+    }
+  } else if (event.type === "invoice.payment_succeeded") {
+    const invoice = event.data.object as Stripe.Invoice;
+    
+    // Handle subscription renewals
+    if (invoice.subscription) {
+      const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+      const appId = subscription.metadata?.appId;
+      const userId = subscription.metadata?.userId;
+      
+      console.log(`Invoice payment succeeded for subscription: ${subscription.id}, app: ${appId}`);
+      
+      // This ensures the subscription is properly tracked
+      if (appId && userId) {
+        await db
+          .insert(appSubscriptions)
+          .values({ appId, userId })
+          .onConflictDoNothing({ target: [appSubscriptions.userId, appSubscriptions.appId] });
+      }
+    }
+  } else if (event.type === "invoice.payment_failed") {
+    const invoice = event.data.object as Stripe.Invoice;
+    
+    // Handle failed subscription payments
+    if (invoice.subscription) {
+      const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+      const appId = subscription.metadata?.appId;
+      const userId = subscription.metadata?.userId;
+      
+      console.log(`Invoice payment failed for subscription: ${subscription.id}, app: ${appId}`);
+      
+      // You might want to send a notification to the user here
+      // or handle the failed payment in some way
     }
   }
 

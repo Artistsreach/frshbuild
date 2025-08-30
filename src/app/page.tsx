@@ -7,15 +7,16 @@ import Image from "next/image";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ExampleButton } from "@/components/ExampleButton";
-import { UserButton } from "@stackframe/stack";
-import { UserApps } from "@/components/user-apps";
-import { ModeToggle } from "@/components/theme-toggle";
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PromptInputTextareaWithTypingAnimation } from "@/components/prompt-input";
 import { Banknote, CoinsIcon } from "lucide-react";
-import { getUser } from "@/actions/get-user";
 import Stars from "@/components/ui/stars";
-import { useFirebaseCredits } from "@/hooks/use-firebase-credits";
+import { useAuth } from "@/contexts/AuthContext";
+import { firebaseFunctions } from "@/lib/firebaseFunctions";
+
+import { ModeToggle } from "@/components/theme-toggle";
+import { UserApps } from "@/components/user-apps";
+import LoginButton from "@/components/LoginButton";
 
 const queryClient = new QueryClient();
 
@@ -24,15 +25,11 @@ function HomePageContent() {
   const [framework, setFramework] = useState("nextjs");
   const [isLoading, setIsLoading] = useState(false);
   const [fundingLoading, setFundingLoading] = useState(false);
+  const [credits, setCredits] = useState<number>(0);
+  const [creditsLoading, setCreditsLoading] = useState(true);
   const router = useRouter();
   const submittedRef = useRef(false);
-
-  const { data: user } = useQuery({
-    queryKey: ["user"],
-    queryFn: () => getUser(),
-  });
-
-  const { credits: firebaseCredits, loading: creditsLoading, hasGoogleAccount } = useFirebaseCredits();
+  const { user } = useAuth();
 
   const handleSubmit = useCallback(async (overridePrompt?: string) => {
     if (submittedRef.current) return;
@@ -86,6 +83,42 @@ function HomePageContent() {
     return () => window.removeEventListener("message", onMessage);
   }, [setPrompt, handleSubmit]);
 
+  // Fetch credits
+  useEffect(() => {
+    if (!user) {
+      setCredits(0);
+      setCreditsLoading(false);
+      return;
+    }
+
+    const getCredits = async () => {
+      try {
+        setCreditsLoading(true);
+        const userCredits = await firebaseFunctions.getUserCredits();
+        setCredits(userCredits);
+      } catch (error) {
+        console.error('Error getting credits:', error);
+        setCredits(0);
+      } finally {
+        setCreditsLoading(false);
+      }
+    };
+
+    getCredits();
+    
+    // Set up polling for real-time updates
+    const interval = setInterval(async () => {
+      try {
+        const userCredits = await firebaseFunctions.getUserCredits();
+        setCredits(userCredits);
+      } catch (error) {
+        console.error('Error updating credits:', error);
+      }
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [user]);
+
   const startFunding = async () => {
     try {
       setFundingLoading(true);
@@ -100,139 +133,133 @@ function HomePageContent() {
   };
 
   return (
-      <main className="min-h-screen p-4 relative">
-        <div className="absolute top-0 left-0 w-full h-full -z-10 dark:block hidden">
-          <Stars />
-        </div>
-        <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-sky-200 to-transparent -z-10 dark:hidden" />
-        <Image
-          src="https://upload.wikimedia.org/wikipedia/commons/1/1a/Moon_rotating_full_220px.gif"
-          alt="Rotating Moon"
-          width={50}
-          height={50}
-          className="absolute top-0 left-0 m-[25px] hidden dark:block"
-        />
-        <div className="flex w-full justify-end items-center">
-          <div className="flex items-center gap-2 flex-1 sm:w-80 justify-end">
+    <main className="min-h-screen p-4 relative">
+      <div className="absolute top-0 left-0 w-full h-full -z-10 dark:block hidden">
+        <Stars />
+      </div>
+      <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-sky-200 to-transparent -z-10 dark:hidden" />
+      <Image
+        src="https://upload.wikimedia.org/wikipedia/commons/1/1a/Moon_rotating_full_220px.gif"
+        alt="Rotating Moon"
+        width={50}
+        height={50}
+        className="absolute top-0 left-0 m-[25px] hidden dark:block"
+      />
+      <div className="flex w-full justify-end items-center">
+        <div className="flex items-center gap-2 flex-1 sm:w-80 justify-end">
+          {user && (
+            <div 
+              className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              title="Firebase credits"
+            >
+              <CoinsIcon className="h-4 w-4 dark:text-yellow-400" />
+              <span className="font-bold">
+                {creditsLoading ? "..." : credits.toLocaleString()}
+              </span>
+            </div>
+          )}
+          <ModeToggle />
+          <div className="flex items-center gap-2">
             {user && (
-              <div 
-                className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-                onClick={() => {
-                  if (!hasGoogleAccount) {
-                    window.location.href = "/handler/account-settings";
-                  }
-                }}
-                title={!hasGoogleAccount ? "Click to link Google account" : "Firebase credits"}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={startFunding}
+                disabled={fundingLoading}
+                className="flex items-center gap-2"
               >
-                <CoinsIcon className="h-4 w-4 dark:text-yellow-400" />
-                {creditsLoading ? (
-                  <span className="animate-pulse">Loading...</span>
-                ) : firebaseCredits ? (
-                  firebaseCredits.credits.toLocaleString()
-                ) : hasGoogleAccount ? (
-                  "0"
-                ) : (
-                  <span className="text-xs opacity-75">Link Google</span>
-                )}
-              </div>
+                <Banknote className="h-4 w-4" />
+                {fundingLoading ? "Opening…" : "Get Funded"}
+              </Button>
             )}
-            <ModeToggle />
-            <UserButton
-              extraItems={[
-                {
-                  text: fundingLoading ? "Opening…" : "Get Funded",
-                  onClick: startFunding,
-                  icon: <Banknote className="h-4 w-4" />,
-                },
-              ]}
-            />
+            <LoginButton />
           </div>
         </div>
+      </div>
 
-        <div>
-          <div className="w-full max-w-lg px-4 sm:px-0 mx-auto flex flex-col items-center mt-16 sm:mt-24 md:mt-32 col-start-1 col-end-1 row-start-1 row-end-1 z-10">
-            <Image
-              className="dark:invert mx-2 mb-4"
-              src="https://static.wixstatic.com/media/bd2e29_695f70787cc24db4891e63da7e7529b3~mv2.png"
-              alt="Adorable Logo"
-              width={48}
-              height={48}
-            />
-            <p className="text-neutral-600 dark:text-neutral-400 text-center mb-6 text-2xl sm:text-3xl md:text-4xl font-bold">
-              What do you want to build?
-            </p>
+      <div>
+        <div className="w-full max-w-lg px-4 sm:px-0 mx-auto flex flex-col items-center mt-16 sm:mt-24 md:mt-32 col-start-1 col-end-1 row-start-1 row-end-1 z-10">
+          <Image
+            className="dark:invert mx-2 mb-4"
+            src="https://static.wixstatic.com/media/bd2e29_695f70787cc24db4891e63da7e7529b3~mv2.png"
+            alt="Adorable Logo"
+            width={48}
+            height={48}
+          />
+          <p className="text-neutral-600 dark:text-neutral-400 text-center mb-6 text-2xl sm:text-3xl md:text-4xl font-bold">
+            What do you want to build?
+          </p>
 
-            <div className="w-full relative my-5">
-              <div className="relative w-full max-w-full overflow-hidden">
-                <div className="w-full bg-accent rounded-3xl relative z-10 border transition-colors shimmer-border">
-                  <PromptInput
-                    isLoading={isLoading}
-                    value={prompt}
-                    onValueChange={setPrompt}
-                    onSubmit={() => handleSubmit()}
-                    className="relative z-10 border-none bg-transparent shadow-none transition-all duration-200 ease-in-out "
-                  >
-                    <div id="home-prompt-field">
-                      <PromptInputTextareaWithTypingAnimation
-                        id="home-prompt-input"
-                        name="app_description"
-                        autoComplete="on"
-                        data-ff-role="prompt"
-                      />
+          <div className="w-full relative my-5">
+            <div className="relative w-full max-w-full overflow-hidden">
+              <div className="w-full bg-accent rounded-3xl relative z-10 border transition-colors shimmer-border">
+                <PromptInput
+                  isLoading={isLoading}
+                  value={prompt}
+                  onValueChange={setPrompt}
+                  onSubmit={() => handleSubmit()}
+                  className="relative z-10 border-none bg-transparent shadow-none transition-all duration-200 ease-in-out "
+                >
+                  <div id="home-prompt-field">
+                    <PromptInputTextareaWithTypingAnimation
+                      id="home-prompt-input"
+                      name="app_description"
+                      autoComplete="on"
+                      data-ff-role="prompt"
+                    />
+                  </div>
+                  <PromptInputActions>
+                    <div id="home-build-button">
+                      <Button
+                        type="button"
+                        onClick={() => handleSubmit()}
+                        disabled={isLoading || submittedRef.current || !prompt.trim()}
+                        className="bg-blue-500 hover:bg-blue-600 text-white rounded-full px-6 py-2 text-sm font-semibold"
+                        data-ff-role="build"
+                      >
+                        {isLoading ? (
+                          <svg
+                            className="animate-spin h-5 w-5 text-white"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                        ) : (
+                          "Build It"
+                        )}
+                      </Button>
                     </div>
-                    <PromptInputActions>
-                      <div id="home-build-button">
-                        <Button
-                          type="button"
-                          onClick={() => handleSubmit()}
-                          disabled={isLoading || submittedRef.current || !prompt.trim()}
-                          className="bg-blue-500 hover:bg-blue-600 text-white rounded-full px-6 py-2 text-sm font-semibold"
-                          data-ff-role="build"
-                        >
-                          {isLoading ? (
-                            <svg
-                              className="animate-spin h-5 w-5 text-white"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              ></circle>
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              ></path>
-                            </svg>
-                          ) : (
-                            "Build It"
-                          )}
-                        </Button>
-                      </div>
-                    </PromptInputActions>
-                  </PromptInput>
-                </div>
+                  </PromptInputActions>
+                </PromptInput>
               </div>
             </div>
-            <FrameworkSelector
-              value={framework}
-              onChange={setFramework}
-            />
-            {/* <Examples setPrompt={setPrompt} /> */}
-            <div className="mt-8 mb-16">
-            </div>
+          </div>
+          <FrameworkSelector
+            value={framework}
+            onChange={setFramework}
+          />
+          <div className="mt-8 mb-16">
           </div>
         </div>
-        <div>
-          <UserApps />
-        </div>
-      </main>
+      </div>
+      <div>
+        <UserApps />
+      </div>
+    </main>
   );
 }
 

@@ -5,6 +5,7 @@ import { appUsers, appsTable } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { stripe } from "@/lib/stripe";
 import { stackServerApp } from "@/auth/stack-auth";
+import { headers } from "next/headers";
 
 export async function createCrowdfund(
   appId: string,
@@ -15,14 +16,18 @@ export async function createCrowdfund(
     throw new Error("User not found");
   }
 
-  if (user.serverMetadata.stripeAccountId) {
-    let credits = user.serverMetadata?.credits as number | undefined;
-    if (credits === undefined) {
-      credits = 100;
-    }
-    if (credits < 80) {
-      throw new Error("Not enough credits");
-    }
+  // Check if user has Stripe Connect account
+  if (!user.serverMetadata.stripeAccountId) {
+    throw new Error("Stripe Connect account required. Please complete onboarding first.");
+  }
+
+  // Check credits (80 credits required for crowdfunding)
+  let credits = user.serverMetadata?.credits as number | undefined;
+  if (credits === undefined) {
+    credits = 100;
+  }
+  if (credits < 80) {
+    throw new Error("Not enough credits. You need 80 credits to create a crowdfund.");
   }
 
   const app = (
@@ -37,71 +42,125 @@ export async function createCrowdfund(
     throw new Error("At least one tier is required");
   }
 
-  const firstTier = tiers[0];
-  const remainingTiers = tiers.slice(1);
+  // Validate tier prices
+  for (const tier of tiers) {
+    const price = parseFloat(tier.price);
+    if (isNaN(price) || price <= 0) {
+      throw new Error("Invalid price in tier");
+    }
+  }
 
-  const stripeOptions = user.serverMetadata.stripeAccountId
-    ? { stripeAccount: user.serverMetadata.stripeAccountId as string }
-    : undefined;
+  const requestHeaders = await headers();
+  const origin = requestHeaders.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-  const product = await stripe.products.create(
-    {
-      name: app.name,
-      description: app.description,
-      default_price_data: {
-        unit_amount: parseInt(firstTier.price) * 100,
-        currency: "usd",
-        recurring: {
-          interval: "month",
+  try {
+    // Create product on the connected account
+    const product = await stripe.products.create(
+      {
+        name: app.name,
+        description: app.description || `Subscribe to ${app.name}`,
+        metadata: {
+          appId: appId,
+          userId: user.userId,
         },
       },
-    },
-    stripeOptions
-  );
+      {
+        stripeAccount: user.serverMetadata.stripeAccountId as string,
+      }
+    );
 
-  const remainingPrices = await Promise.all(
-    remainingTiers.map((tier) =>
-      stripe.prices.create(
-        {
-          product: product.id,
-          unit_amount: parseInt(tier.price) * 100,
-          currency: "usd",
-          recurring: {
-            interval: "month",
+    // Create prices for each tier
+    const prices = await Promise.all(
+      tiers.map(async (tier, index) => {
+        const price = await stripe.prices.create(
+          {
+            product: product.id,
+            unit_amount: Math.round(parseFloat(tier.price) * 100), // Convert to cents
+            currency: "usd",
+            recurring: {
+              interval: "month",
+            },
+            nickname: tier.description || `Tier ${index + 1}`,
+            metadata: {
+              appId: appId,
+              userId: user.userId,
+              tier: (index + 1).toString(),
+            },
           },
-          nickname: tier.description,
-        },
-        stripeOptions
-      )
-    )
-  );
+          {
+            stripeAccount: user.serverMetadata.stripeAccountId as string,
+          }
+        );
+        return price;
+      })
+    );
 
-  const allPriceIds = [
-    product.default_price as string,
-    ...remainingPrices.map((p) => p.id),
-  ].filter(Boolean);
+    // Create payment links for each tier
+    const paymentLinks = await Promise.all(
+      prices.map(async (price, index) => {
+        const paymentLink = await stripe.paymentLinks.create(
+          {
+            line_items: [
+              {
+                price: price.id,
+                quantity: 1,
+              },
+            ],
+            subscription_data: {
+              metadata: {
+                appId: appId,
+                userId: user.userId,
+                tier: (index + 1).toString(),
+              },
+            },
+            metadata: {
+              appId: appId,
+              userId: user.userId,
+              tier: (index + 1).toString(),
+            },
+            after_completion: {
+              type: "redirect",
+              redirect: {
+                url: `${origin}/app/${appId}?subscription=success`,
+              },
+            },
+          },
+          {
+            stripeAccount: user.serverMetadata.stripeAccountId as string,
+          }
+        );
+        return paymentLink;
+      })
+    );
 
-  await db
-    .update(appsTable)
-    .set({
-      stripeProductId: product.id,
-      stripePriceIds: allPriceIds,
-      stripeAccountId: (user.serverMetadata.stripeAccountId as string) ?? null,
-    })
-    .where(eq(appsTable.id, appId));
+    // Update app with Stripe information
+    await db
+      .update(appsTable)
+      .set({
+        stripeProductId: product.id,
+        stripePriceIds: prices.map(p => p.id),
+        stripeAccountId: user.serverMetadata.stripeAccountId as string,
+        requires_subscription: true,
+        is_public: true, // Make app public when crowdfunded
+      })
+      .where(eq(appsTable.id, appId));
 
-  if (user.serverMetadata.stripeAccountId) {
-    let credits = user.serverMetadata?.credits as number | undefined;
-    if (credits === undefined) {
-      credits = 100;
-    }
+    // Deduct credits
     await user.update({
       serverMetadata: {
         ...user.serverMetadata,
         credits: credits - 80,
       },
     });
-  }
 
-  return { success: true };
+    return { 
+      success: true, 
+      productId: product.id,
+      priceIds: prices.map(p => p.id),
+      paymentLinks: paymentLinks.map(pl => pl.url),
+    };
+  } catch (error) {
+    console.error("Error creating crowdfund:", error);
+    throw new Error(`Failed to create crowdfund: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }

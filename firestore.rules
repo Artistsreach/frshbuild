@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - contains credits
+    match /users/{userId} {
+      // Allow read if user is authenticated and accessing their own data
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow write if user is authenticated and accessing their own data
+      // Note: This allows users to update their own credits
+      allow write: if request.auth != null && request.auth.uid == userId;
+      
+      // Subcollections
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Profiles collection
+    match /profiles/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Public data (if any)
+    match /public_data/{document} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

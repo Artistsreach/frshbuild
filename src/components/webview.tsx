@@ -7,11 +7,6 @@ import {
   FreestyleDevServerHandle,
 } from "freestyle-sandboxes/react/dev-server";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "./ui/button";
-import { RefreshCwIcon, Monitor, Tablet, Smartphone } from "lucide-react";
-import { ShareButton } from "./share-button";
-import { ModeToggle } from "./theme-toggle";
-import { CrowdfundModal } from "./crowdfund-modal";
 import html2canvas from "html2canvas";
 
 export default function WebView(props: {
@@ -25,6 +20,7 @@ export default function WebView(props: {
   requiresSubscription?: boolean;
   appName?: string;
   isCrowdfunded?: boolean;
+  device?: "desktop" | "tablet" | "phone";
 }) {
   function requestDevServer({ repoId }: { repoId: string }) {
     return requestDevServerInner({ repoId });
@@ -32,7 +28,7 @@ export default function WebView(props: {
 
   const devServerRef = useRef<FreestyleDevServerHandle>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [device, setDevice] = useState<"desktop" | "tablet" | "phone">("desktop");
+  const device = props.device || "desktop";
 
   useEffect(() => {
     // Capture screenshot on page unload/navigation
@@ -144,58 +140,6 @@ export default function WebView(props: {
 
   return (
     <div className="flex flex-col overflow-hidden h-screen border-l transition-opacity duration-700 mt-[2px]">
-      <div className="h-12 border-b border-gray-200 dark:border-black items-center flex px-2 bg-background sticky top-0 justify-between gap-2">
-        <div className="flex items-center gap-1">
-          <Button
-            variant={device === "desktop" ? "default" : "outline"}
-            size="icon"
-            onClick={() => setDevice("desktop")}
-            aria-label="Desktop preview"
-          >
-            <Monitor className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={device === "tablet" ? "default" : "outline"}
-            size="icon"
-            onClick={() => setDevice("tablet")}
-            aria-label="Tablet preview"
-          >
-            <Tablet className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={device === "phone" ? "default" : "outline"}
-            size="icon"
-            onClick={() => setDevice("phone")}
-            aria-label="Phone preview"
-          >
-            <Smartphone className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="flex items-center gap-2 ml-auto">
-          <Button
-            variant={"ghost"}
-            size={"icon"}
-            onClick={() => devServerRef.current?.refresh()}
-            aria-label="Refresh preview"
-          >
-            <RefreshCwIcon />
-          </Button>
-          <ModeToggle />
-          {props.isOwner && props.isPublic && !props.isCrowdfunded && (
-            <CrowdfundModal appName={props.appName ?? "App"} appId={props.appId} />
-          )}
-          {props.isOwner && (
-            <ShareButton
-              domain={props.domain}
-              appId={props.appId}
-              isPublic={props.isPublic}
-              isRecreatable={props.isRecreatable}
-              requiresSubscription={props.requiresSubscription}
-              baseId={props.baseId}
-            />
-          )}
-        </div>
-      </div>
       <div ref={containerRef} id="app-preview-container" className="flex-1 overflow-auto flex items-center justify-center p-3">
         {/*
           Wrapper that controls the size/aspect ratio. We rely on CSS aspect-ratio

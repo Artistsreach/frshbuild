@@ -5,7 +5,7 @@ import { appsTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getUser } from "@/auth/stack-auth";
 
-export async function updateAppName(appId: string, newName: string) {
+export async function updateAppName({ appId, name }: { appId: string; name: string }) {
   const user = await getUser();
   const app = (
     await db.select().from(appsTable).where(eq(appsTable.id, appId))
@@ -28,7 +28,7 @@ export async function updateAppName(appId: string, newName: string) {
 
   await db
     .update(appsTable)
-    .set({ name: newName })
+    .set({ name })
     .where(eq(appsTable.id, appId));
 
   return { success: true };

@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Trash, ExternalLink, MoreVertical, Globe, Pencil } from "lucide-react";
+import { Trash, ExternalLink, MoreVertical, Globe, Pencil, Image } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { deleteApp } from "@/actions/delete-app";
@@ -43,6 +43,7 @@ export function AppCard({
   stripeProductId,
   source,
 }: AppCardProps) {
+  const [isMintModalOpen, setIsMintModalOpen] = useState(false);
   const router = useRouter();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isTierModalOpen, setIsTierModalOpen] = useState(false);
@@ -114,9 +115,6 @@ export function AppCard({
       </div>
 
       <div className="absolute bottom-4 right-4 flex gap-2">
-        {source === "user" && (
-          <MintNftModal appName={name} appId={id} />
-        )}
         {deletable && isPublic && !stripeProductId && (
           <CrowdfundModal appName={name} appId={id} onSuccess={onDelete} />
         )}
@@ -157,6 +155,12 @@ export function AppCard({
                 <ExternalLink className="mr-2 h-4 w-4" />
                 Open
               </DropdownMenuItem>
+              {source === "user" && isPublic && (
+                <DropdownMenuItem onSelect={() => setIsMintModalOpen(true)}>
+                  <Image className="mr-2 h-4 w-4" />
+                  Mint as NFT
+                </DropdownMenuItem>
+              )}
 
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -180,6 +184,14 @@ export function AppCard({
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
       />
+      {source === "user" && isPublic && (
+        <MintNftModal
+          appName={name}
+          appId={id}
+          open={isMintModalOpen}
+          onOpenChange={setIsMintModalOpen}
+        />
+      )}
     </Card>
   );
 }

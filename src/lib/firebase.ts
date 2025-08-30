@@ -8,77 +8,38 @@
 // NEXT_PUBLIC_FIREBASE_APP_ID
 // NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID (optional)
 
-import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { getStorage as getFirebaseStorage, type FirebaseStorage } from "firebase/storage";
+import { initializeApp, getApps, FirebaseApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBAZLKhYHLevVvBVfWG9ZLwVZMlQ9Fh8zA",
+  authDomain: "fresh25.firebaseapp.com",
+  projectId: "fresh25",
+  storageBucket: "fresh25.firebasestorage.app",
+  messagingSenderId: "382962850342",
+  appId: "1:382962850342:web:4a87b6ee30d0c77bf2a4e7",
+  measurementId: "G-CZZW8LMXN3"
+};
 
 let app: FirebaseApp | undefined;
-let storage: FirebaseStorage | undefined;
 
 export function getFirebaseApp(): FirebaseApp | undefined {
   if (typeof window === "undefined") return undefined;
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  let storageBucketEnv = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-  const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
-
-  if (!apiKey || !authDomain || !projectId || !storageBucketEnv || !appId) {
-    return undefined;
-  }
-
-  // Determine how to pass storage configuration:
-  // - If env starts with gs:// -> treat as explicit bucket URL; do NOT pass storageBucket into initializeApp.
-  // - If env ends with firebasestorage.app -> convert to <name>.firebasestorage.app.
-  // - If env has no dot -> treat as raw bucket name (e.g., fresh25) and use getStorage(app, `gs://<name>`).
-  let storageBucketOption: string | undefined = undefined; // for initializeApp
-  let storageBucketUrl: string | undefined = undefined; // for getStorage(app, url)
-
-  const raw = storageBucketEnv.trim();
-  if (raw.startsWith("gs://")) {
-    storageBucketUrl = raw;
-  } else if (raw.endsWith("firebasestorage.app")) {
-    // Convert domain-like bucket to firebasestorage.app host
-    const parts = raw.split(".");
-    const name = parts[0];
-    storageBucketOption = `${name}.firebasestorage.app`;
-  } else if (!raw.includes(".")) {
-    // Looks like a bare bucket name (e.g., fresh25)
-    storageBucketUrl = `gs://${raw}`;
-  } else {
-    // Assume it's a host-style bucket (e.g., fresh25.firebasestorage.app)
-    storageBucketOption = raw;
-  }
-
   if (!app) {
     const apps = getApps();
-    app = apps.length ? apps[0] : initializeApp({
-      apiKey,
-      authDomain,
-      projectId,
-      // Only set storageBucket in options when we have a host-style name
-      ...(storageBucketOption ? { storageBucket: storageBucketOption } : {}),
-      appId,
-      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-      measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
-    });
+    app = apps.length ? apps[0] : initializeApp(firebaseConfig);
+    
+    // Initialize Analytics only in browser
+    if (typeof window !== "undefined") {
+      try {
+        getAnalytics(app);
+      } catch (error) {
+        console.log("Analytics not available:", error);
+      }
+    }
   }
   return app;
 }
 
-export function getStorage(): FirebaseStorage | undefined {
-  if (typeof window === "undefined") return undefined;
-  if (!storage) {
-    const a = getFirebaseApp();
-    if (!a) return undefined;
-    // Recompute bucket preference here, mirroring logic above
-    const envVal = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim();
-    if (envVal && envVal.startsWith("gs://")) {
-      storage = getFirebaseStorage(a, envVal);
-    } else if (envVal && !envVal.includes(".")) {
-      storage = getFirebaseStorage(a, `gs://${envVal}`);
-    } else {
-      storage = getFirebaseStorage(a);
-    }
-  }
-  return storage;
-}
+export { firebaseConfig };

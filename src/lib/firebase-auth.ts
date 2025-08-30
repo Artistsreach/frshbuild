@@ -1,166 +1,79 @@
-// Firebase Authentication and Firestore for linking with other project
-// This is separate from the existing firebase.ts (which is for storage)
-// 
-// Required environment variables for your other project:
-// NEXT_PUBLIC_FIREBASE_OTHER_PROJECT_API_KEY
-// NEXT_PUBLIC_FIREBASE_OTHER_PROJECT_AUTH_DOMAIN  
-// NEXT_PUBLIC_FIREBASE_OTHER_PROJECT_PROJECT_ID
-// NEXT_PUBLIC_FIREBASE_OTHER_PROJECT_APP_ID
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, User } from "firebase/auth";
+import { getFirebaseApp } from "./firebase";
+import { useState, useEffect } from "react";
 
-import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { 
-  getAuth, 
-  type Auth, 
-  GoogleAuthProvider, 
-  signInWithCredential,
-  type AuthCredential,
-  type User 
-} from "firebase/auth";
-import { 
-  getFirestore, 
-  type Firestore, 
-  doc, 
-  getDoc, 
-  type DocumentSnapshot 
-} from "firebase/firestore";
-
-let otherProjectApp: FirebaseApp | undefined;
-let otherProjectAuth: Auth | undefined;
-let otherProjectFirestore: Firestore | undefined;
-
-// Initialize Firebase app for your other project
-export function getOtherProjectFirebaseApp(): FirebaseApp | undefined {
-  if (typeof window === "undefined") return undefined;
-  
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_OTHER_PROJECT_API_KEY;
-  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_OTHER_PROJECT_AUTH_DOMAIN;
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_OTHER_PROJECT_PROJECT_ID;
-  const appId = process.env.NEXT_PUBLIC_FIREBASE_OTHER_PROJECT_APP_ID;
-
-  if (!apiKey || !authDomain || !projectId || !appId) {
-    console.warn("Firebase other project configuration missing");
-    return undefined;
+export function getFirebaseAuth() {
+  const app = getFirebaseApp();
+  if (!app) {
+    throw new Error("Firebase app not initialized");
   }
-
-  if (!otherProjectApp) {
-    // Check if we already have an app with this project ID
-    const existingApp = getApps().find(app => app.options.projectId === projectId);
-    
-    if (existingApp) {
-      otherProjectApp = existingApp;
-    } else {
-      otherProjectApp = initializeApp({
-        apiKey,
-        authDomain,
-        projectId,
-        appId,
-      }, "other-project"); // Give it a unique name
-    }
-  }
-  
-  return otherProjectApp;
+  return getAuth(app);
 }
 
-// Get Firebase Auth for your other project
-export function getOtherProjectAuth(): Auth | undefined {
-  if (typeof window === "undefined") return undefined;
-  
-  if (!otherProjectAuth) {
-    const app = getOtherProjectFirebaseApp();
-    if (app) {
-      otherProjectAuth = getAuth(app);
-    }
-  }
-  
-  return otherProjectAuth;
+export function getGoogleProvider() {
+  return new GoogleAuthProvider();
 }
 
-// Get Firestore for your other project
-export function getOtherProjectFirestore(): Firestore | undefined {
-  if (typeof window === "undefined") return undefined;
-  
-  if (!otherProjectFirestore) {
-    const app = getOtherProjectFirebaseApp();
-    if (app) {
-      otherProjectFirestore = getFirestore(app);
-    }
-  }
-  
-  return otherProjectFirestore;
-}
-
-// Types for user credit data
-export interface UserCredits {
-  credits: number;
-  userId: string;
-  lastUpdated?: Date;
-}
-
-// Sign in to Firebase using Google OAuth token from Stack Auth
-export async function signInToFirebaseWithGoogle(googleAccessToken: string): Promise<User | null> {
+export async function signInWithGoogle() {
   try {
-    const auth = getOtherProjectAuth();
-    if (!auth) {
-      throw new Error("Firebase auth not initialized");
-    }
-
-    // Create credential from Google access token
-    const credential = GoogleAuthProvider.credential(null, googleAccessToken);
-    
-    // Sign in with the credential
-    const result = await signInWithCredential(auth, credential);
+    const auth = getFirebaseAuth();
+    const provider = getGoogleProvider();
+    const result = await signInWithPopup(auth, provider);
     return result.user;
+  } catch (error: any) {
+    console.error("Google sign-in error:", error);
+    throw error;
+  }
+}
+
+export async function signOutUser() {
+  try {
+    const auth = getFirebaseAuth();
+    await firebaseSignOut(auth);
+  } catch (error: any) {
+    console.error("Sign-out error:", error);
+    throw error;
+  }
+}
+
+export function getCurrentUser(): User | null {
+  try {
+    const auth = getFirebaseAuth();
+    return auth.currentUser;
   } catch (error) {
-    console.error("Error signing in to Firebase with Google:", error);
+    console.error("Error getting current user:", error);
     return null;
   }
 }
 
-// Fetch user credits from Firestore
-export async function fetchUserCredits(userId: string): Promise<UserCredits | null> {
+export async function getIdToken(user: User): Promise<string> {
   try {
-    const firestore = getOtherProjectFirestore();
-    if (!firestore) {
-      throw new Error("Firestore not initialized");
-    }
-
-    // Adjust the collection and document path based on your Firestore structure
-    // This assumes users are stored in a "users" collection with credits field
-    const userDocRef = doc(firestore, "users", userId);
-    const userDocSnap = await getDoc(userDocRef);
-
-    if (!userDocSnap.exists()) {
-      console.log("No user document found for:", userId);
-      return null;
-    }
-
-    const userData = userDocSnap.data();
-    return {
-      credits: userData.credits || 0,
-      userId,
-      lastUpdated: userData.lastUpdated?.toDate?.() || new Date(),
-    };
-  } catch (error) {
-    console.error("Error fetching user credits:", error);
-    return null;
+    return await user.getIdToken();
+  } catch (error: any) {
+    console.error("Error getting ID token:", error);
+    throw error;
   }
 }
 
-// Combined function to authenticate and fetch credits
-export async function authenticateAndFetchCredits(googleAccessToken: string): Promise<UserCredits | null> {
-  try {
-    // First, sign in to Firebase with Google token
-    const user = await signInToFirebaseWithGoogle(googleAccessToken);
-    
-    if (!user) {
-      console.error("Failed to authenticate with Firebase");
-      return null;
-    }
+export function useFirebaseAuth() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-    // Then fetch the user's credits
-    return await fetchUserCredits(user.uid);
-  } catch (error) {
-    console.error("Error in authenticateAndFetchCredits:", error);
-    return null;
-  }
+  useEffect(() => {
+    try {
+      const auth = getFirebaseAuth();
+      
+      const unsubscribe = auth.onAuthStateChanged((user) => {
+        setUser(user);
+        setLoading(false);
+      });
+
+      return unsubscribe;
+    } catch (error) {
+      console.error("Error setting up auth listener:", error);
+      setLoading(false);
+    }
+  }, []);
+
+  return { user, loading };
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { mintNft } from "@/actions/mint-nft";
@@ -11,8 +11,10 @@ import { toast } from "sonner";
 import { generateBannerbearImage } from "@/actions/bannerbear-generate";
 import { createPremint } from "@/actions/mintology-premints";
 
-export function MintNftModal({ appId, appName, gitRepo, projectId, frameworkName, appDescription }: { appId: string; appName: string; gitRepo?: string; projectId?: string; frameworkName?: string; appDescription?: string }) {
-  const [open, setOpen] = useState(false);
+export function MintNftModal({ appId, appName, gitRepo, projectId, frameworkName, appDescription, open: externalOpen, onOpenChange }: { appId: string; appName: string; gitRepo?: string; projectId?: string; frameworkName?: string; appDescription?: string; open?: boolean; onOpenChange?: (open: boolean) => void }) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
   const [wallet, setWallet] = useState("");
   const [email, setEmail] = useState("");
   const [metadataJson, setMetadataJson] = useState(() => {
@@ -36,12 +38,17 @@ export function MintNftModal({ appId, appName, gitRepo, projectId, frameworkName
   const [resolvedProjectId, setResolvedProjectId] = useState<string | null>(null);
   const effectiveProjectId = projectId || (process.env.NEXT_PUBLIC_MINTOLOGY_PROJECT_ID as string) || "";
 
+  console.log("MintNftModal rendered:", { appId, appName, open, step, frameworkName });
 
   function resolveFrameworkLogoUrl(framework?: string): string | undefined {
-    const f = (framework || "").toLowerCase();
-    if (f.includes("next")) return "https://seeklogo.com/images/N/next-js-logo-8FCFF51DD2-seeklogo.com.png";
-    if (f.includes("vite")) return "https://logospng.org/download/vite-js/vite-js-4096-logo.png";
-    if (f.includes("expo")) return "https://seeklogo.com/images/E/expo-logo-FE218B5FF2-seeklogo.com.png";
+    if (!framework) return undefined;
+    
+    // Use external CDN URLs for Bannerbear compatibility
+    const f = framework.toLowerCase();
+    if (f.includes("next")) return "https://cdn.worldvectorlogo.com/logos/next-js.svg";
+    if (f.includes("vite")) return "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Vitejs-logo.svg/1200px-Vitejs-logo.svg.png";
+    if (f.includes("expo")) return "https://www.cdnlogo.com/logos/e/67/expo.svg";
+    
     return undefined;
   }
 
@@ -75,21 +82,29 @@ export function MintNftModal({ appId, appName, gitRepo, projectId, frameworkName
       }
       setResolvedProjectId(projectIdToUse);
 
-      // 1) Generate image via Bannerbear
+      // 1) Generate image via Bannerbear (no screenshot needed)
       toast.message("Generating Bannerbear image...");
-      const bb = await generateBannerbearImage({
+      
+      // Prepare all the data for Bannerbear with proper defaults
+      const bannerbearParams = {
         templateId: "qY4mReZp3VAeb97lP8",
-        appName,
-        appDescription,
+        appName: appName || "Unnamed App",
+        appDescription: appDescription || `A web application created with ${frameworkName || 'modern framework'}`,
         appId,
-        gitRepo,
-        frameworkName,
-        // featuresSummary could be generated asynchronously later; omit if not available
-        featuresSummary: undefined,
+        gitRepo: gitRepo || undefined,
+        frameworkName: frameworkName || "Web App",
+        featuresSummary: "Modern web application with responsive design and user-friendly interface",
         frameworkLogoUrl: resolveFrameworkLogoUrl(frameworkName),
+        logoUrl: undefined, // We don't have a custom logo
+        barCodeData: appId, // Use app ID as barcode data for uniqueness
         dateCreatedIso: new Date().toISOString(),
-      });
+      };
+      
+      console.log("Bannerbear params:", bannerbearParams);
+      
+      const bb = await generateBannerbearImage(bannerbearParams);
       if (!bb.ok) {
+        console.error("Bannerbear failed:", bb.error);
         toast.error(bb.error || "Bannerbear failed");
         return false;
       }
@@ -198,20 +213,35 @@ export function MintNftModal({ appId, appName, gitRepo, projectId, frameworkName
     }
   }
 
-  // Prepare premint before opening the modal so it's ready when user sees it
-  async function openModalWithPreCapture() {
-    const ok = await preparePremint();
-    if (ok) setOpen(true);
-  }
+  // Prepare premint when modal opens
+  useEffect(() => {
+    console.log("Modal state changed:", { open, step, preparing });
+    if (open && step === "prepare") {
+      console.log("Starting preparation...");
+      preparePremint();
+    }
+  }, [open]);
+
+  const handleOpenChange = (newOpen: boolean) => {
+    console.log("Dialog open change:", newOpen);
+    setOpen(newOpen);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <Button size="sm" variant="secondary" onClick={openModalWithPreCapture} disabled={preparing}>
-        {preparing ? "Preparing..." : "Mint as NFT"}
-      </Button>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {externalOpen === undefined && (
+        <DialogTrigger asChild>
+          <Button size="sm" variant="secondary" disabled={preparing}>
+            {preparing ? "Preparing..." : "Mint as NFT"}
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Mint “{appName}” as NFT</DialogTitle>
+          <DialogDescription>
+            Mint your app as an NFT on the Mintology platform. This will create a unique digital asset representing your application.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           {!effectiveProjectId && (
