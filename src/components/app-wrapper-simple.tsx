@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getAuth, signInWithCustomToken } from "firebase/auth";
+import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { UIMessage } from "ai";
-import Chat from "./chat";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { MessageSquare, Monitor } from "lucide-react";
 import { TopBar } from "./topbar";
 import WebView from "./webview";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { Button } from "./ui/button";
-import { MessageSquare, Monitor } from "lucide-react";
+import Chat from "./chat";
+import { UIMessage } from "ai";
 
 const queryClient = new QueryClient();
 
@@ -24,17 +23,17 @@ interface AppWrapperProps {
   repoId: string;
   domain?: string;
   running: boolean;
-  showRecreate?: boolean;
-  sourceAppId?: string;
-  isPublic?: boolean;
-  isOwner?: boolean;
-  isRecreatable?: boolean;
-  isCrowdfunded?: boolean;
+  showRecreate: boolean;
+  sourceAppId: string;
+  isPublic: boolean;
+  isOwner: boolean;
+  isRecreatable: boolean;
+  isCrowdfunded: boolean;
   stripeProductId?: string;
-  requiresSubscription?: boolean;
-  isSubscriber?: boolean;
-  topBarActions?: React.ReactNode;
+  requiresSubscription: boolean;
+  isSubscriber: boolean;
   authToken?: string;
+  topBarActions?: React.ReactNode;
 }
 
 export default function AppWrapper(props: AppWrapperProps) {
@@ -42,14 +41,15 @@ export default function AppWrapper(props: AppWrapperProps) {
   const [device, setDevice] = useState<"desktop" | "tablet" | "phone">("desktop");
   const [mobileView, setMobileView] = useState<"chat" | "preview">("chat");
 
-  useEffect(() => {
-    if (props.authToken) {
-      const auth = getAuth();
-      signInWithCustomToken(auth, props.authToken).catch((error) => {
-        console.error("Error signing in with custom token:", error);
-      });
-    }
-  }, [props.authToken]);
+  // Remove custom token authentication since user is already authenticated via Firebase Auth
+  // useEffect(() => {
+  //   if (props.authToken) {
+  //     const auth = getAuth();
+  //     signInWithCustomToken(auth, props.authToken).catch((error) => {
+  //       console.error("Error signing in with custom token:", error);
+  //     });
+  //   }
+  // }, [props.authToken]);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -154,52 +154,46 @@ export default function AppWrapper(props: AppWrapperProps) {
                   </div>
                 </div>
                 
-                {/* Mobile Layout - Single View - Only for owners */}
-                <div className="md:hidden flex-1 min-h-0">
+                {/* Mobile Layout - Toggle between Chat and Preview */}
+                <div className="md:hidden h-full min-h-0">
                   {mobileView === "chat" ? (
-                    <div className="h-full flex flex-col min-h-0">
-                      <Chat
-                        appId={props.appId}
-                        initialMessages={props.initialMessages}
-                        running={props.running}
-                      />
-                    </div>
+                    <Chat
+                      appId={props.appId}
+                      initialMessages={props.initialMessages}
+                      running={props.running}
+                    />
                   ) : (
-                    <div className="h-full flex flex-col min-h-0">
-                      <WebView
-                        repo={props.repo}
-                        baseId={props.baseId}
-                        appId={props.appId}
-                        domain={props.domain}
-                        isOwner={props.isOwner ?? false}
-                        isPublic={props.isPublic ?? false}
-                        isRecreatable={props.isRecreatable ?? false}
-                        requiresSubscription={props.requiresSubscription ?? false}
-                        appName={props.appName}
-                        isCrowdfunded={props.isCrowdfunded ?? false}
-                        device={device}
-                      />
-                    </div>
+                    <WebView
+                      repo={props.repo}
+                      baseId={props.baseId}
+                      appId={props.appId}
+                      domain={props.domain}
+                      isOwner={props.isOwner ?? false}
+                      isPublic={props.isPublic ?? false}
+                      isRecreatable={props.isRecreatable ?? false}
+                      requiresSubscription={props.requiresSubscription ?? false}
+                      appName={props.appName}
+                      isCrowdfunded={props.isCrowdfunded ?? false}
+                      device={device}
+                    />
                   )}
                 </div>
               </>
             ) : (
-              /* Non-owners only see the app preview */
-              <div className="h-full flex flex-col min-h-0">
-                <WebView
-                  repo={props.repo}
-                  baseId={props.baseId}
-                  appId={props.appId}
-                  domain={props.domain}
-                  isOwner={props.isOwner ?? false}
-                  isPublic={props.isPublic ?? false}
-                  isRecreatable={props.isRecreatable ?? false}
-                  requiresSubscription={props.requiresSubscription ?? false}
-                  appName={props.appName}
-                  isCrowdfunded={props.isCrowdfunded ?? false}
-                  device={device}
-                />
-              </div>
+              // Non-owners see only the app preview
+              <WebView
+                repo={props.repo}
+                baseId={props.baseId}
+                appId={props.appId}
+                domain={props.domain}
+                isOwner={props.isOwner ?? false}
+                isPublic={props.isPublic ?? false}
+                isRecreatable={props.isRecreatable ?? false}
+                requiresSubscription={props.requiresSubscription ?? false}
+                appName={props.appName}
+                isCrowdfunded={props.isCrowdfunded ?? false}
+                device={device}
+              />
             )}
           </TabsContent>
           

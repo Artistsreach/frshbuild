@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import AppWrapper from "../../../components/app-wrapper-simple";
-import { freestyle } from "@/lib/freestyle";
 import { UIMessage } from "ai";
 import { RecreateButton } from "@/components/recreate-button";
 import { getAppMessages } from "@/actions/get-app-messages";
+import { requestDevServer } from "@/actions/request-dev-server";
 
 interface AppInfo {
   id: string;
@@ -73,12 +73,16 @@ export default function AppPage() {
           setUiMessages([]);
         }
 
-        // Request dev server
+        // Request dev server using server action
         if (appData.gitRepo) {
           try {
-            const res = await freestyle.requestDevServer({ repoId: appData.gitRepo });
-            setCodeServerUrl(res.codeServerUrl || "");
-            setEphemeralUrl(res.ephemeralUrl || "");
+            const devServerResult = await requestDevServer(appData.gitRepo);
+            if (devServerResult.success) {
+              setCodeServerUrl(devServerResult.codeServerUrl || "");
+              setEphemeralUrl(devServerResult.ephemeralUrl || "");
+            } else {
+              console.error("Dev server request failed:", devServerResult.error);
+            }
           } catch (error) {
             console.error("Dev server request failed:", error);
             // Allow page to render; client WebView can recover/request later
