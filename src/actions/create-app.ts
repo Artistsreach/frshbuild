@@ -16,8 +16,6 @@ export async function createApp({
   templateId: string;
   userId: string;
 }) {
-  console.time("get user profile");
-  
   // Get user profile from Firestore using the provided userId
   const profileRef = doc(firestoreDb, "profiles", userId);
   const profileSnap = await getDoc(profileRef);
@@ -34,7 +32,6 @@ export async function createApp({
   }
 
   console.log("Using freestyleIdentity:", profile.freestyleIdentity);
-  console.timeEnd("get user profile");
 
   if (!templates[templateId]) {
     throw new Error(
@@ -42,7 +39,7 @@ export async function createApp({
     );
   }
 
-  console.time("git");
+  console.log("Creating Git repository...");
   const repo = await freestyle.createGitRepository({
     name: "Unnamed App",
     public: true,
@@ -67,13 +64,12 @@ export async function createApp({
   });
 
   console.log("Git access token created");
-  console.timeEnd("git");
 
-  console.time("dev server");
+  console.log("Requesting dev server...");
   const { mcpEphemeralUrl } = await freestyle.requestDevServer({
     repoId: repo.repoId,
   });
-  console.timeEnd("dev server");
+  console.log("Dev server requested");
 
   const app = await db.transaction(async (tx) => {
     const appInsertion = await tx

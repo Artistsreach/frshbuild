@@ -38,6 +38,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (currentUser) {
         console.log('User authenticated:', currentUser.uid);
 
+        // Wait a moment for Firebase Auth to fully initialize
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         // Initialize credits for new users
         try {
           const { initializeCredits } = await import("@/lib/credits");
@@ -46,79 +49,84 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error("Error initializing credits:", error);
         }
 
-        // Listen to profile changes
+        // Listen to profile changes with better error handling
         const profileRef = doc(db, 'profiles', currentUser.uid);
         profileUnsubscribe = onSnapshot(profileRef, async (profileSnap) => {
-          if (profileSnap.exists()) {
-            const profileData = { uid: currentUser.uid, ...profileSnap.data() } as UserProfile;
-            console.log('Profile loaded:', profileData);
-            
-            // Check if user needs freestyleIdentity
-            if (!profileData.freestyleIdentity) {
-              console.log('Creating freestyleIdentity for user:', currentUser.uid);
-              try {
-                // Use server action instead of client-side freestyle call
-                const result = await createFreestyleIdentity();
-                if (result.success) {
-                  console.log('FreestyleIdentity created via server action:', result.identityId);
-                  
-                  // Try to update profile with freestyleIdentity
-                  try {
-                    await setDoc(profileRef, { 
-                      freestyleIdentity: result.identityId 
-                    }, { merge: true });
-                    console.log('Profile updated with freestyleIdentity');
+          try {
+            if (profileSnap.exists()) {
+              const profileData = { uid: currentUser.uid, ...profileSnap.data() } as UserProfile;
+              console.log('Profile loaded:', profileData);
+              
+              // Check if user needs freestyleIdentity
+              if (!profileData.freestyleIdentity) {
+                console.log('Creating freestyleIdentity for user:', currentUser.uid);
+                try {
+                  // Use server action instead of client-side freestyle call
+                  const result = await createFreestyleIdentity();
+                  if (result.success) {
+                    console.log('FreestyleIdentity created via server action:', result.identityId);
                     
-                    // Add a small delay to ensure the profile state is updated
-                    setTimeout(() => {
+                    // Try to update profile with freestyleIdentity
+                    try {
+                      await setDoc(profileRef, { 
+                        freestyleIdentity: result.identityId 
+                      }, { merge: true });
+                      console.log('Profile updated with freestyleIdentity');
+                      
+                      // Update local state immediately
                       setProfile({ ...profileData, freestyleIdentity: result.identityId });
-                    }, 100);
-                  } catch (firestoreError) {
-                    console.error('Error updating profile with freestyleIdentity:', firestoreError);
-                    // Even if Firestore update fails, we can still use the identity
-                    // Update the local profile data
-                    profileData.freestyleIdentity = result.identityId;
-                    console.log('Using freestyleIdentity locally:', result.identityId);
+                    } catch (firestoreError) {
+                      console.error('Error updating profile with freestyleIdentity:', firestoreError);
+                      // Even if Firestore update fails, we can still use the identity
+                      // Update the local profile data
+                      profileData.freestyleIdentity = result.identityId;
+                      console.log('Using freestyleIdentity locally:', result.identityId);
+                      setProfile(profileData);
+                    }
+                  } else {
+                    console.error('Failed to create freestyleIdentity via server action:', result.error);
                     setProfile(profileData);
                   }
-                } else {
-                  console.error('Failed to create freestyleIdentity via server action:', result.error);
+                } catch (error) {
+                  console.error('Error calling createFreestyleIdentity server action:', error);
+                  // Continue without freestyleIdentity for now
                   setProfile(profileData);
                 }
-              } catch (error) {
-                console.error('Error calling createFreestyleIdentity server action:', error);
-                // Continue without freestyleIdentity for now
+              } else {
                 setProfile(profileData);
               }
             } else {
-              setProfile(profileData);
+              // Create profile if it doesn't exist
+              try {
+                console.log('Creating new profile for user:', currentUser.uid);
+                const newProfile = {
+                  email: currentUser.email || '',
+                  role: 'user',
+                  createdAt: new Date(),
+                  displayName: currentUser.displayName || undefined,
+                  photoURL: currentUser.photoURL || undefined,
+                  // freestyleIdentity will be created in the onSnapshot listener above
+                };
+                
+                await setDoc(profileRef, newProfile);
+                console.log('Profile created successfully');
+                
+                // The profile will be updated via the onSnapshot listener
+              } catch (error) {
+                console.error('Error creating profile:', error);
+                setProfile(null);
+              }
             }
-          } else {
-            // Create profile if it doesn't exist
-            try {
-              console.log('Creating new profile for user:', currentUser.uid);
-              const newProfile = {
-                email: currentUser.email || '',
-                role: 'user',
-                createdAt: new Date(),
-                displayName: currentUser.displayName || undefined,
-                photoURL: currentUser.photoURL || undefined,
-                // freestyleIdentity will be created in the onSnapshot listener above
-              };
-              
-              await setDoc(profileRef, newProfile);
-              console.log('Profile created successfully');
-              
-              // The profile will be updated via the onSnapshot listener
-            } catch (error) {
-              console.error('Error creating profile:', error);
-              setProfile(null);
-            }
+          } catch (error) {
+            console.error('Error processing profile data:', error);
+            setProfile(null);
+          } finally {
+            setLoading(false);
           }
-          setLoading(false);
         }, (error) => {
           console.error('Error listening to profile:', error);
-          setProfile(null);
+          // Don't set profile to null on error, just log it
+          // This prevents the app from breaking due to temporary permission issues
           setLoading(false);
         });
       } else {
