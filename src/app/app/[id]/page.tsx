@@ -5,9 +5,9 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import AppWrapper from "../../../components/app-wrapper-simple";
 import { freestyle } from "@/lib/freestyle";
-import { memory } from "@/mastra/agents/builder";
 import { UIMessage } from "ai";
 import { RecreateButton } from "@/components/recreate-button";
+import { getAppMessages } from "@/actions/get-app-messages";
 
 interface AppInfo {
   id: string;
@@ -51,15 +51,12 @@ export default function AppPage() {
         const appData = await response.json();
         setApp(appData);
 
-        // Load UI messages
+        // Load UI messages using server action
         try {
-          const result = await memory.query({
-            threadId: id,
-            resourceId: id,
-          });
-          setUiMessages(result.uiMessages || []);
+          const messages = await getAppMessages(id);
+          setUiMessages(messages);
         } catch (error) {
-          console.error("Error querying memory:", error);
+          console.error("Error loading messages:", error);
           setUiMessages([]);
         }
 
