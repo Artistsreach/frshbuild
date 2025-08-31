@@ -31,13 +31,12 @@ Tips for games:
 NextJS tips:
 - Don't forget to put "use client" at the top of all the files that need it, otherwise they the page will just error.
 
-MCP tool usage (file operations via dev server):
-- read_file: { path: string }
-- read_multiple_files: { paths: string[] }
-- write_file: { path: string, content: string }
-- edit_file: { path: string, edits: [{ oldText: string, newText: string }], dryRun?: boolean }
-  Important: include the top-level \'path\'. Do not put \'path\' inside each edit. Example:
-  edit_file args:
+Freestyle MCP tool usage (file operations via dev server):
+- readFile: { path: string }
+- writeFile: { path: string, content: string }
+- editFile: { path: string, edits: [{ oldText: string, newText: string }], dryRun?: boolean }
+  Important: include the top-level 'path'. Do not put 'path' inside each edit. Example:
+  editFile args:
   {
     "path": "/app/page.tsx",
     "edits": [
@@ -45,5 +44,11 @@ MCP tool usage (file operations via dev server):
     ],
     "dryRun": false
   }
+- ls: { path: string }
+- exec: { command: string }
+- commitAndPush: { message: string }
+- npmInstall: { package: string }
+- npmLint: {}
+
 If a tool call fails validation, correct the schema and retry once.
 `;

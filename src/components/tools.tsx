@@ -30,7 +30,7 @@ export function ToolMessage({
     );
   }
 
-  if (toolInvocation.type === "tool-edit_file") {
+  if (toolInvocation.type === "tool-editFile") {
     return <EditFileTool toolInvocation={toolInvocation} />;
   }
 

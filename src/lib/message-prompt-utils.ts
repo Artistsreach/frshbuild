@@ -50,13 +50,13 @@ export function truncateFileToolCalls(messages: UIMessage[]): UIMessage[] {
             }
           }
         }
-        // Handle write_file and edit_file tool calls
-        else if (toolName === "write_file" || toolName === "edit_file") {
+        // Handle writeFile and editFile tool calls
+        else if (toolName === "writeFile" || toolName === "editFile") {
           // Truncate the args in the tool call
           if (toolInvocation.args && typeof toolInvocation.args === "object") {
-            // Fix common schema mismatch for edit_file: require top-level path
+            // Fix common schema mismatch for editFile: require top-level path
             if (
-              toolName === "edit_file" &&
+              toolName === "editFile" &&
               !("path" in toolInvocation.args) &&
               "edits" in toolInvocation.args &&
               Array.isArray(toolInvocation.args.edits) &&
