@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { auth } from '@/lib/firebase-admin';
+import { auth as getFirebaseAuth } from '@/lib/firebase-admin';
 
 export async function getUser() {
   const cookieStore = await cookies();
@@ -9,6 +9,8 @@ export async function getUser() {
   if (!session) {
     return null;
   }
+
+  const auth = getFirebaseAuth();
 
   if (!auth) {
     return null;

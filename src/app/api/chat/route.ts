@@ -19,8 +19,10 @@ import { appUsers } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db as firestoreDb } from "@/lib/firebaseClient";
+import { getFirebaseAdmin } from "@/lib/firebase-admin";
 
 export async function POST(req: NextRequest) {
+  getFirebaseAdmin();
   console.log("creating new chat stream");
   const appId = getAppIdFromHeaders(req);
 
