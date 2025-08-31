@@ -33,21 +33,25 @@ export async function createApp({
   if (!profile.freestyleIdentity) {
     console.log("Creating freestyleIdentity for user:", userId);
     try {
-      const identity = await freestyle.createIdentity({
-        name: profile.displayName || profile.email || "User",
-        email: profile.email,
-      });
+      const identity = await freestyle.createGitIdentity();
+      console.log("FreestyleIdentity created:", identity.id);
       
       // Update the profile with the new freestyleIdentity
-      await setDoc(profileRef, { freestyleIdentity: identity.identityId }, { merge: true });
-      profile = { ...profile, freestyleIdentity: identity.identityId };
-      console.log("FreestyleIdentity created:", identity.identityId);
+      await setDoc(profileRef, { freestyleIdentity: identity.id }, { merge: true });
+      profile = { ...profile, freestyleIdentity: identity.id };
+      console.log("Profile updated with freestyleIdentity:", identity.id);
     } catch (error) {
       console.error("Error creating freestyleIdentity:", error);
       throw new Error("Failed to create user identity");
     }
   }
 
+  // Double-check that we have a valid freestyleIdentity
+  if (!profile.freestyleIdentity) {
+    throw new Error("FreestyleIdentity is still undefined after creation attempt");
+  }
+
+  console.log("Using freestyleIdentity:", profile.freestyleIdentity);
   console.timeEnd("get user profile");
 
   if (!templates[templateId]) {
@@ -65,16 +69,22 @@ export async function createApp({
       url: templates[templateId].repo,
     },
   });
+  
+  console.log("Repository created:", repo.repoId);
+  
   await freestyle.grantGitPermission({
     identityId: profile.freestyleIdentity,
     repoId: repo.repoId,
     permission: "write",
   });
 
+  console.log("Git permission granted");
+
   const token = await freestyle.createGitAccessToken({
     identityId: profile.freestyleIdentity,
   });
 
+  console.log("Git access token created");
   console.timeEnd("git");
 
   console.time("dev server");
