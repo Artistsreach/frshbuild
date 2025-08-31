@@ -1,4 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+
+export async function GET() {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("session");
+
+  if (sessionCookie && sessionCookie.value) {
+    const sessionValue = sessionCookie.value;
+    try {
+      const { auth: getFirebaseAuth } = await import("@/lib/firebase-admin");
+      const auth = getFirebaseAuth();
+
+      if (!auth) {
+        return NextResponse.json(
+          { error: "Authentication service not available" },
+          { status: 503 }
+        );
+      }
+
+      const decodedClaims = await auth.verifySessionCookie(sessionValue, true);
+      return NextResponse.json({
+        isAuthenticated: true,
+        user: decodedClaims,
+      });
+    } catch (error) {
+      // Session cookie is invalid, clear it.
+      const response = NextResponse.json({ isAuthenticated: false });
+      response.cookies.set("session", "", { maxAge: 0, path: "/" });
+      return response;
+    }
+  }
+
+  return NextResponse.json({ isAuthenticated: false });
+}
 
 export async function POST(request: NextRequest) {
   try {
