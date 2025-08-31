@@ -31,7 +31,26 @@ Tips for games:
 NextJS tips:
 - Don't forget to put "use client" at the top of all the files that need it, otherwise they the page will just error.
 
-Available tools for app building:
+Freestyle MCP tool usage (file operations via dev server):
+- readFile: { path: string }
+- writeFile: { path: string, content: string }
+- editFile: { path: string, edits: [{ oldText: string, newText: string }], dryRun?: boolean }
+  Important: include the top-level 'path'. Do not put 'path' inside each edit. Example:
+  editFile args:
+  {
+    "path": "/app/page.tsx",
+    "edits": [
+      { "oldText": "export default Home;", "newText": "export default function Home() { return <div/> }" }
+    ],
+    "dryRun": false
+  }
+- ls: { path: string }
+- exec: { command: string }
+- commitAndPush: { message: string }
+- npmInstall: { package: string }
+- npmLint: {}
+
+Additional available tools for app building:
 - scrape: Scrape web content for research
 - extract: Extract specific information from web content
 - crawl: Crawl websites for comprehensive data

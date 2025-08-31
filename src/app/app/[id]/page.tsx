@@ -8,7 +8,6 @@ import { UIMessage } from "ai";
 import { RecreateButton } from "@/components/recreate-button";
 import { getAppMessages } from "@/actions/get-app-messages";
 import { requestDevServer } from "@/actions/request-dev-server";
-import { testMemory } from "@/actions/test-memory";
 
 interface AppInfo {
   id: string;
@@ -32,20 +31,8 @@ export default function AppPage() {
   const [ephemeralUrl, setEphemeralUrl] = useState("");
   const [uiMessages, setUiMessages] = useState<UIMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [memoryTestResult, setMemoryTestResult] = useState<string | null>(null);
 
   const id = params.id as string;
-
-  const testMemorySystem = async () => {
-    try {
-      const result = await testMemory(id);
-      setMemoryTestResult(JSON.stringify(result, null, 2));
-      console.log("Memory test result:", result);
-    } catch (error) {
-      console.error("Memory test failed:", error);
-      setMemoryTestResult("Test failed: " + error);
-    }
-  };
 
   useEffect(() => {
     const loadApp = async () => {
@@ -165,34 +152,7 @@ export default function AppPage() {
   const showRecreate = app.is_recreatable && !isOwner;
 
   return (
-    <>
-      {/* Debug Section - Only show for development */}
-      {process.env.NODE_ENV === "development" && (
-        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
-          <h3 className="text-lg font-semibold mb-2">Debug: Memory System Test</h3>
-          <button
-            onClick={testMemorySystem}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md mb-2"
-          >
-            Test Memory System
-          </button>
-          {memoryTestResult && (
-            <div className="mt-2">
-              <h4 className="font-semibold">Test Result:</h4>
-              <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto">
-                {memoryTestResult}
-              </pre>
-            </div>
-          )}
-          <div className="mt-2">
-            <h4 className="font-semibold">Current Messages:</h4>
-            <p>Loaded {uiMessages.length} messages from memory</p>
-            <p>App ID: {id}</p>
-          </div>
-        </div>
-      )}
-      
-      <AppWrapper
+    <AppWrapper
       baseId={app.baseId || ""}
       codeServerUrl={codeServerUrl}
       appName={app.name || ""}
@@ -219,6 +179,5 @@ export default function AppPage() {
         ) : null
       }
     />
-    </>
   );
 }
