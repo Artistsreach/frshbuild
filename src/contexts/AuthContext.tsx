@@ -36,6 +36,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setMounted(true);
   }, []);
 
+  // Function to create session cookie
+  const createSessionCookie = async (currentUser: User) => {
+    try {
+      const idToken = await currentUser.getIdToken(true); // Force refresh
+      console.log('Creating session cookie for user:', currentUser.uid);
+      
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ idToken }),
+        credentials: 'include', // Important: include cookies
+      });
+
+      if (!response.ok) {
+        throw new Error(`Session creation failed: ${response.status}`);
+      }
+
+      console.log('Session cookie created successfully');
+    } catch (error) {
+      console.error('Error creating session cookie:', error);
+    }
+  };
+
   useEffect(() => {
     if (!mounted) return;
 
@@ -48,19 +73,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       profileUnsubscribe();
 
       if (currentUser) {
-        // Create session cookie for iframe compatibility
-        try {
-          const idToken = await currentUser.getIdToken();
-          await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ idToken }),
-          });
-        } catch (error) {
-          console.error('Error creating session cookie:', error);
-        }
+        // Create session cookie for server-side authentication
+        await createSessionCookie(currentUser);
 
         // Initialize credits for new users
         try {
@@ -121,6 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clear session cookie
       await fetch('/api/auth/session', {
         method: 'DELETE',
+        credentials: 'include',
       });
       
       await firebaseSignOut(auth);

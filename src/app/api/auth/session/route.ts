@@ -68,16 +68,23 @@ export async function POST(request: NextRequest) {
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
 
-    // Set cookie
+    // Set cookie with proper configuration
     const response = NextResponse.json({ success: true });
+    
+    // Determine cookie settings based on environment
+    const isProduction = process.env.NODE_ENV === "production";
+    const isVercel = process.env.VERCEL === "1";
+    
     response.cookies.set("session", sessionCookie, {
-      maxAge: expiresIn,
+      maxAge: expiresIn / 1000, // Convert to seconds
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: isProduction || isVercel,
+      sameSite: isProduction || isVercel ? "lax" : "lax",
       path: "/",
+      domain: isProduction ? undefined : undefined, // Let browser set domain
     });
 
+    console.log("Session cookie set successfully");
     return response;
   } catch (error) {
     console.error("Session creation error:", error);
