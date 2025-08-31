@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebaseClient";
-import { freestyle } from "@/lib/freestyle";
+import { createFreestyleIdentity } from "@/actions/create-freestyle-identity";
 
 interface UserProfile {
   uid: string;
@@ -57,24 +57,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (!profileData.freestyleIdentity) {
               console.log('Creating freestyleIdentity for user:', currentUser.uid);
               try {
-                const identity = await freestyle.createGitIdentity();
-                console.log('FreestyleIdentity created:', identity.id);
-                
-                // Try to update profile with freestyleIdentity
-                try {
-                  await setDoc(profileRef, { 
-                    freestyleIdentity: identity.id 
-                  }, { merge: true });
-                  console.log('Profile updated with freestyleIdentity');
-                } catch (firestoreError) {
-                  console.error('Error updating profile with freestyleIdentity:', firestoreError);
-                  // Even if Firestore update fails, we can still use the identity
-                  // Update the local profile data
-                  profileData.freestyleIdentity = identity.id;
-                  console.log('Using freestyleIdentity locally:', identity.id);
+                // Use server action instead of client-side freestyle call
+                const result = await createFreestyleIdentity();
+                if (result.success) {
+                  console.log('FreestyleIdentity created via server action:', result.identityId);
+                  
+                  // Try to update profile with freestyleIdentity
+                  try {
+                    await setDoc(profileRef, { 
+                      freestyleIdentity: result.identityId 
+                    }, { merge: true });
+                    console.log('Profile updated with freestyleIdentity');
+                  } catch (firestoreError) {
+                    console.error('Error updating profile with freestyleIdentity:', firestoreError);
+                    // Even if Firestore update fails, we can still use the identity
+                    // Update the local profile data
+                    profileData.freestyleIdentity = result.identityId;
+                    console.log('Using freestyleIdentity locally:', result.identityId);
+                  }
+                } else {
+                  console.error('Failed to create freestyleIdentity via server action:', result.error);
                 }
               } catch (error) {
-                console.error('Error creating freestyleIdentity:', error);
+                console.error('Error calling createFreestyleIdentity server action:', error);
                 // Continue without freestyleIdentity for now
               }
             }
