@@ -1,26 +1,22 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getUserApps } from "@/actions/user-apps";
 import { getPublicApps } from "@/actions/public-apps";
-import { isLoggedIn } from "@/actions/is-logged-in";
 import { AppCard } from "./app-card";
 import { Button } from "./ui/button";
 import { useMemo, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function UserApps() {
   const queryClient = useQueryClient();
   const [view, setView] = useState<"user" | "public">("user");
 
-  const { data: loggedIn } = useQuery({
-    queryKey: ["auth", "loggedIn"],
-    queryFn: isLoggedIn,
-    initialData: false,
-  });
+  const { isAuthenticated: loggedIn } = useAuth();
 
   const { data: userApps } = useQuery({
     queryKey: ["userApps"],
     queryFn: getUserApps,
     initialData: [],
-    enabled: true, // still works for logged-out (returns public), but we will use explicit public list below
+    enabled: loggedIn,
   });
 
   const { data: publicApps } = useQuery({

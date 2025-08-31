@@ -3,11 +3,11 @@
 import { db } from "@/lib/db";
 import { appsTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { stackServerApp } from "@/auth/stack-auth";
+import { getUser } from "@/auth/get-user";
 import { revalidatePath } from "next/cache";
 
 export async function setAppSubscription(appId: string, requiresSubscription: boolean) {
-  const user = await stackServerApp.getUser();
+  const user = await getUser();
 
   if (!user) {
     throw new Error("You must be logged in to update an app");
@@ -22,7 +22,7 @@ export async function setAppSubscription(appId: string, requiresSubscription: bo
   }
 
   const userPermission = await db.query.appUsers.findFirst({
-    where: (users, { and, eq }) => and(eq(users.appId, appId), eq(users.userId, user.id)),
+    where: (users, { and, eq }) => and(eq(users.appId, appId), eq(users.userId, user.uid)),
   });
 
   if (!userPermission) {

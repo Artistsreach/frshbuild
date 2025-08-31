@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { appsTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { getUser } from "@/auth/stack-auth";
+import { getUser } from "@/auth/get-user";
 import { redirect } from "next/navigation";
 
 export async function setAppRecreatable({

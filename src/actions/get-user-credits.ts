@@ -1,11 +1,18 @@
 "use server";
 
-import { stackServerApp } from "@/auth/stack-auth";
+import { getUser } from "@/auth/get-user";
+import { doc, getDoc } from "firebase/firestore";
+import { db as firestoreDb } from "@/lib/firebaseClient";
 
 export async function getUserCredits() {
-  const user = await stackServerApp.getUser();
+  const user = await getUser();
   if (!user) {
     return 0;
   }
-  return (user.serverMetadata?.credits as number | undefined) ?? 100;
+
+  const profileRef = doc(firestoreDb, "profiles", user.uid);
+  const profileSnap = await getDoc(profileRef);
+  const profile = profileSnap.data();
+
+  return (profile?.credits as number | undefined) ?? 100;
 }

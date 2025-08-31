@@ -4,25 +4,31 @@ import { db } from "@/lib/db";
 import { appUsers, appsTable } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { stripe } from "@/lib/stripe";
-import { stackServerApp } from "@/auth/stack-auth";
 import { headers } from "next/headers";
+import { getUser } from "@/auth/get-user";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { db as firestoreDb } from "@/lib/firebaseClient";
 
 export async function createCrowdfund(
   appId: string,
   tiers: { price: string; description: string }[]
 ) {
-  const user = await stackServerApp.getUser();
+  const user = await getUser();
   if (!user) {
     throw new Error("User not found");
   }
 
+  const profileRef = doc(firestoreDb, "profiles", user.uid);
+  const profileSnap = await getDoc(profileRef);
+  const profile = profileSnap.data();
+
   // Check if user has Stripe Connect account
-  if (!user.serverMetadata.stripeAccountId) {
+  if (!profile?.stripeAccountId) {
     throw new Error("Stripe Connect account required. Please complete onboarding first.");
   }
 
   // Check credits (80 credits required for crowdfunding)
-  let credits = user.serverMetadata?.credits as number | undefined;
+  let credits = profile?.credits as number | undefined;
   if (credits === undefined) {
     credits = 100;
   }
@@ -61,11 +67,11 @@ export async function createCrowdfund(
         description: app.description || `Subscribe to ${app.name}`,
         metadata: {
           appId: appId,
-          userId: user.userId,
+          userId: user.uid,
         },
       },
       {
-        stripeAccount: user.serverMetadata.stripeAccountId as string,
+        stripeAccount: profile.stripeAccountId as string,
       }
     );
 
@@ -83,12 +89,12 @@ export async function createCrowdfund(
             nickname: tier.description || `Tier ${index + 1}`,
             metadata: {
               appId: appId,
-              userId: user.userId,
+              userId: user.uid,
               tier: (index + 1).toString(),
             },
           },
           {
-            stripeAccount: user.serverMetadata.stripeAccountId as string,
+            stripeAccount: profile.stripeAccountId as string,
           }
         );
         return price;
@@ -109,13 +115,13 @@ export async function createCrowdfund(
             subscription_data: {
               metadata: {
                 appId: appId,
-                userId: user.userId,
+                userId: user.uid,
                 tier: (index + 1).toString(),
               },
             },
             metadata: {
               appId: appId,
-              userId: user.userId,
+              userId: user.uid,
               tier: (index + 1).toString(),
             },
             after_completion: {
@@ -126,7 +132,7 @@ export async function createCrowdfund(
             },
           },
           {
-            stripeAccount: user.serverMetadata.stripeAccountId as string,
+            stripeAccount: profile.stripeAccountId as string,
           }
         );
         return paymentLink;
@@ -139,21 +145,18 @@ export async function createCrowdfund(
       .set({
         stripeProductId: product.id,
         stripePriceIds: prices.map(p => p.id),
-        stripeAccountId: user.serverMetadata.stripeAccountId as string,
+        stripeAccountId: profile.stripeAccountId as string,
         requires_subscription: true,
         is_public: true, // Make app public when crowdfunded
       })
       .where(eq(appsTable.id, appId));
 
     // Deduct credits
-    await user.update({
-      serverMetadata: {
-        ...user.serverMetadata,
-        credits: credits - 80,
-      },
+    await updateDoc(profileRef, {
+      credits: credits - 80,
     });
 
-    return { 
+    return {
       success: true, 
       productId: product.id,
       priceIds: prices.map(p => p.id),

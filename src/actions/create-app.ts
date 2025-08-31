@@ -1,9 +1,11 @@
 "use server";
 
 import { sendMessage } from "@/app/api/chat/route";
-import { getUser } from "@/auth/stack-auth";
+import { getUser } from "@/auth/get-user";
 import { appsTable, appUsers } from "@/db/schema";
 import { db } from "@/lib/db";
+import { doc, getDoc } from "firebase/firestore";
+import { db as firestoreDb } from "@/lib/firebaseClient";
 import { freestyle } from "@/lib/freestyle";
 import { templates } from "@/lib/templates";
 import { memory } from "@/mastra/agents/builder";
@@ -18,6 +20,18 @@ export async function createApp({
   console.time("get user");
   const user = await getUser();
   console.timeEnd("get user");
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const profileRef = doc(firestoreDb, "profiles", user.uid);
+  const profileSnap = await getDoc(profileRef);
+  const profile = profileSnap.data();
+
+  if (!profile) {
+    throw new Error("User profile not found");
+  }
 
   if (!templates[templateId]) {
     throw new Error(
@@ -35,13 +49,13 @@ export async function createApp({
     },
   });
   await freestyle.grantGitPermission({
-    identityId: user.freestyleIdentity,
+    identityId: profile.freestyleIdentity,
     repoId: repo.repoId,
     permission: "write",
   });
 
   const token = await freestyle.createGitAccessToken({
-    identityId: user.freestyleIdentity,
+    identityId: profile.freestyleIdentity,
   });
 
   console.timeEnd("git");
@@ -68,11 +82,11 @@ export async function createApp({
       .insert(appUsers)
       .values({
         appId: appInsertion[0].id,
-        userId: user.userId,
+        userId: user.uid,
         permissions: "admin",
         freestyleAccessToken: token.token,
         freestyleAccessTokenId: token.id,
-        freestyleIdentity: user.freestyleIdentity,
+        freestyleIdentity: profile.freestyleIdentity,
       })
       .returning();
 

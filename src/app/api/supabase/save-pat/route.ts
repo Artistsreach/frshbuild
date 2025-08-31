@@ -1,10 +1,12 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import { stackServerApp } from "@/auth/stack-auth";
+import { getUser } from "@/auth/get-user";
+import { doc, updateDoc } from "firebase/firestore";
+import { db as firestoreDb } from "@/lib/firebaseClient";
 
 export async function POST(req: Request) {
   try {
-    const user = await stackServerApp.getUser();
+    const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { pat } = await req.json();
@@ -16,13 +18,10 @@ export async function POST(req: Request) {
     // We don't fail on network error; we just store the PAT.
     // await fetch("https://api.supabase.com/v1/projects", { headers: { Authorization: `Bearer ${pat}` } });
 
-    const current = user.serverMetadata || {};
-    await user.update({
-      serverMetadata: {
-        ...current,
-        supabasePat: pat,
-        supabaseConnectedAt: new Date().toISOString(),
-      },
+    const profileRef = doc(firestoreDb, "profiles", user.uid);
+    await updateDoc(profileRef, {
+      supabasePat: pat,
+      supabaseConnectedAt: new Date().toISOString(),
     });
 
     return NextResponse.json({ ok: true });

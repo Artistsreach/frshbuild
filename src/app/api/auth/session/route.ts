@@ -1,4 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+
+export async function GET() {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("session");
+
+  if (sessionCookie && sessionCookie.value) {
+    const sessionValue = sessionCookie.value;
+    try {
+      const { auth: getFirebaseAuth } = await import("@/lib/firebase-admin");
+      const auth = getFirebaseAuth();
+
+      if (!auth) {
+        return NextResponse.json(
+          { error: "Authentication service not available" },
+          { status: 503 }
+        );
+      }
+
+      const decodedClaims = await auth.verifySessionCookie(sessionValue, true);
+      return NextResponse.json({
+        isAuthenticated: true,
+        user: decodedClaims,
+      });
+    } catch (error) {
+      // Session cookie is invalid, clear it.
+      const response = NextResponse.json({ isAuthenticated: false });
+      response.cookies.set("session", "", { maxAge: 0, path: "/" });
+      return response;
+    }
+  }
+
+  return NextResponse.json({ isAuthenticated: false });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,8 +45,8 @@ export async function POST(request: NextRequest) {
     // Try to import Firebase Admin dynamically to avoid build-time errors
     let auth;
     try {
-      const { auth: firebaseAuth } = await import("@/lib/firebase-admin");
-      auth = firebaseAuth;
+      const { auth: getFirebaseAuth } = await import("@/lib/firebase-admin");
+      auth = getFirebaseAuth();
     } catch (error) {
       console.error("Firebase Admin not available:", error);
       return NextResponse.json({ 
@@ -39,8 +73,8 @@ export async function POST(request: NextRequest) {
     response.cookies.set("session", sessionCookie, {
       maxAge: expiresIn,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: true,
+      sameSite: "none",
       path: "/",
     });
 
@@ -59,8 +93,8 @@ export async function DELETE() {
   response.cookies.set("session", "", {
     maxAge: 0,
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: true,
+    sameSite: "none",
     path: "/",
   });
   return response;

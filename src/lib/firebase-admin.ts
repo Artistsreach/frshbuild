@@ -2,7 +2,7 @@ import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 
 // Initialize Firebase Admin if not already initialized
-function getFirebaseAdmin() {
+export function getFirebaseAdmin() {
   if (getApps().length === 0) {
     const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
@@ -69,4 +69,4 @@ function getFirebaseAdmin() {
   }
 }
 
-export const auth = getFirebaseAdmin();
+export const auth = getFirebaseAdmin;

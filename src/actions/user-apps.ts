@@ -1,15 +1,14 @@
 "use server";
 
-import { getUser } from "@/auth/stack-auth";
+import { getUser } from "@/auth/get-user";
 import { appsTable, appUsers } from "@/db/schema";
 import { db } from "@/lib/db";
 import { desc, eq } from "drizzle-orm";
 
 export async function getUserApps() {
-  // Try to fetch for an authenticated user first
-  try {
-    const user = await getUser();
+  const user = await getUser();
 
+  if (user) {
     const userApps = await db
       .select({
         id: appsTable.id,
@@ -23,13 +22,12 @@ export async function getUserApps() {
       })
       .from(appUsers)
       .innerJoin(appsTable, eq(appUsers.appId, appsTable.id))
-      .where(eq(appUsers.userId, user.userId))
+      .where(eq(appUsers.userId, user.uid))
       .orderBy(desc(appsTable.createdAt));
 
     // Mark as deletable for owners/admins. For simplicity, allow delete if the relation exists.
     return userApps.map((a) => ({ ...a, deletable: true }));
-  } catch {
-    // Not logged in: return public apps (no delete capability)
+  } else {
     const publicApps = await db
       .select({
         id: appsTable.id,

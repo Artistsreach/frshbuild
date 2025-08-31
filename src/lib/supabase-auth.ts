@@ -1,10 +1,19 @@
 import "server-only";
-import { stackServerApp } from "@/auth/stack-auth";
+import { getUser } from "@/auth/get-user";
+import { doc, getDoc } from "firebase/firestore";
+import { db as firestoreDb } from "@/lib/firebaseClient";
 
 export async function getSupabaseToken(): Promise<null | { scheme: string; token: string }> {
-  const user = await stackServerApp.getUser();
+  const user = await getUser();
   if (!user) return null;
-  const meta = user.serverMetadata as any;
+
+  const profileRef = doc(firestoreDb, "profiles", user.uid);
+  const profileSnap = await getDoc(profileRef);
+  const profile = profileSnap.data();
+
+  if (!profile) return null;
+
+  const meta = profile as any;
 
   // Prefer OAuth access token
   const oauth = meta?.supabaseOAuth as

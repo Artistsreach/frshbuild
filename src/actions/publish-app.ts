@@ -1,6 +1,6 @@
 "use server";
 
-import { getUser } from "@/auth/stack-auth";
+import { getUser } from "@/auth/get-user";
 import { appDeployments, appsTable, appUsers } from "@/db/schema";
 import { db } from "@/lib/db";
 import { freestyle } from "@/lib/freestyle";
@@ -42,7 +42,7 @@ export async function publishApp({ appId }: { appId: string }) {
     throw new Error("No users found for this app");
   }
 
-  if (!app.users.some((user) => user.userId === user.userId)) {
+  if (!app.users.some((u) => u.userId === user.uid)) {
     throw new Error("User does not have permission to publish this app");
   }
 
@@ -85,8 +85,8 @@ export async function publishApp({ appId }: { appId: string }) {
     }
   );
 
-  if (deployment.message) {
-    console.error("Deployment failed:", deployment.message);
+  if ("error" in deployment) {
+    console.error("Deployment failed:", deployment.error);
     throw new Error(`Deployment failed`);
   }
 

@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { stackServerApp } from "@/auth/stack-auth";
+import { getUser } from "@/auth/get-user";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { db as firestoreDb } from "@/lib/firebaseClient";
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await stackServerApp.getUser();
+    const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const profileRef = doc(firestoreDb, "profiles", user.uid);
+    const profileSnap = await getDoc(profileRef);
+    const profile = profileSnap.data();
+
     // Ensure a connected account exists for this user
-    let accountId = user.serverMetadata?.stripeAccountId as string | undefined;
+    let accountId = profile?.stripeAccountId as string | undefined;
 
     if (!accountId) {
       const account = await stripe.accounts.create({
@@ -23,11 +29,8 @@ export async function POST(req: NextRequest) {
       });
 
       accountId = account.id;
-      await user.update({
-        serverMetadata: {
-          ...(user.serverMetadata || {}),
-          stripeAccountId: accountId,
-        },
+      await updateDoc(profileRef, {
+        stripeAccountId: accountId,
       });
     }
 

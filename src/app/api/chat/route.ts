@@ -13,12 +13,16 @@ EventEmitter.defaultMaxListeners = 1000;
 import { NextRequest } from "next/server";
 import { redisPublisher } from "@/lib/redis";
 import { MessageList } from "@mastra/core/agent";
-import { stackServerApp } from "@/auth/stack-auth";
+import { getUser } from "@/auth/get-user";
 import { db } from "@/lib/db";
 import { appUsers } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { db as firestoreDb } from "@/lib/firebaseClient";
+import { getFirebaseAdmin } from "@/lib/firebase-admin";
 
 export async function POST(req: NextRequest) {
+  getFirebaseAdmin();
   console.log("creating new chat stream");
   const appId = getAppIdFromHeaders(req);
 
@@ -31,11 +35,16 @@ export async function POST(req: NextRequest) {
     return new Response("App not found", { status: 404 });
   }
 
-  const user = await stackServerApp.getUser();
+  const user = await getUser();
   if (!user) {
     return new Response("User not found", { status: 401 });
   }
-  let credits = user.serverMetadata?.credits as number | undefined;
+
+  const profileRef = doc(firestoreDb, "profiles", user.uid);
+  const profileSnap = await getDoc(profileRef);
+  const profile = profileSnap.data();
+
+  let credits = profile?.credits as number | undefined;
 
   if (credits === undefined) {
     credits = 100;
@@ -45,11 +54,8 @@ export async function POST(req: NextRequest) {
     return new Response("Not enough credits", { status: 402 });
   }
 
-  await user.update({
-    serverMetadata: {
-      ...user.serverMetadata,
-      credits: credits - 10,
-    },
+  await updateDoc(profileRef, {
+    credits: credits - 10,
   });
 
   const streamState = await redisPublisher.get(

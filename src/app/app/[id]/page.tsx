@@ -4,7 +4,7 @@ import { freestyle } from "@/lib/freestyle";
 import { db } from "@/lib/db";
 import { appSubscriptions, appUsers, apps } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
-import { getUser } from "@/actions/get-user";
+import { getAuthToken } from "@/actions/get-auth-token";
 import { memory } from "@/mastra/agents/builder";
 import { buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
@@ -14,6 +14,7 @@ import { DeploymentHistory } from "@/components/deployment-history";
 import { DeploymentStatus } from "@/components/deployment-status";
 import { ExpoDeployModal } from "@/components/expo-deploy-modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UIMessage } from "ai";
 
 // Force dynamic rendering to avoid static generation issues with cookies
 export const dynamic = 'force-dynamic';
@@ -40,9 +41,11 @@ export default async function AppPage({
 
   const isEffectivelyPublic = app?.info?.is_public || !!app?.info?.stripeProductId;
 
+  const authToken = await getAuthToken();
+  const user = authToken ? { id: authToken.uid } : null;
+
   // If the app is not public, require authentication and membership
   if (!isEffectivelyPublic) {
-    const user = await getUser();
     if (!user) {
       return <ProjectNotFound />;
     }
@@ -61,7 +64,6 @@ export default async function AppPage({
   }
 
   if (app?.info?.requires_subscription) {
-    const user = await getUser();
     if (!user) {
       return <SubscriptionRequired />;
     }
@@ -89,7 +91,6 @@ export default async function AppPage({
 
   // Determine if the current viewer is a member to conditionally show "Recreate"
   let isOwner = false;
-  const user = await getUser();
   if (user) {
     try {
       const membership = (
@@ -108,7 +109,7 @@ export default async function AppPage({
 
   const showRecreate = app?.info?.is_recreatable && !isOwner;
 
-  let uiMessages = [];
+  let uiMessages: UIMessage[] = [];
   try {
     const result = await memory.query({
       threadId: id,
@@ -174,12 +175,13 @@ export default async function AppPage({
       stripeProductId={app?.info?.stripeProductId ?? undefined}
       requiresSubscription={app?.info?.requires_subscription || false}
       isSubscriber={isSubscriber}
+      authToken={authToken?.token}
       topBarActions={
         showRecreate && app?.info?.id ? (
           <RecreateButton sourceAppId={app?.info?.id} />
         ) : null
-             }
-     />
+      }
+    />
    );
    } catch (error) {
      console.error("Error in AppPage:", error);

@@ -7,7 +7,6 @@ import { ArrowUpRightIcon, GlobeIcon, TerminalIcon, CoinsIcon, RefreshCwIcon, Mo
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { firebaseFunctions } from "@/lib/firebaseFunctions";
-import { getUser } from "@/actions/get-user";
 import { PurchaseModal } from "./purchase-modal";
 import { TierSelectionModal } from "./tier-selection-modal";
 import { SupabaseConnectModal } from "./supabase-connect-modal";
@@ -61,11 +60,6 @@ export function TopBar({
   const [creditsLoading, setCreditsLoading] = useState(true);
 
   const { user: firebaseUser } = useAuth();
-
-  const { data: user } = useQuery({
-    queryKey: ["user"],
-    queryFn: () => getUser(),
-  });
 
   // Get Firebase credits using the same method as the home page
   useEffect(() => {

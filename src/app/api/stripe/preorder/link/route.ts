@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { stackServerApp } from "@/auth/stack-auth";
+import { getUser } from "@/auth/get-user";
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await stackServerApp.getUser();
+    const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     const paymentLink = await stripe.paymentLinks.create({
       line_items: [{ price, quantity: 1 }],
       metadata: {
-        userId: user.id,
+        userId: user.uid,
         appId: appId || "",
         purpose: "subscription_preorder",
       },

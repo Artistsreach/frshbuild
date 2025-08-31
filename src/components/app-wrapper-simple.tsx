@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getAuth, signInWithCustomToken } from "firebase/auth";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { UIMessage } from "ai";
 import Chat from "./chat";
@@ -33,12 +34,22 @@ interface AppWrapperProps {
   requiresSubscription?: boolean;
   isSubscriber?: boolean;
   topBarActions?: React.ReactNode;
+  authToken?: string;
 }
 
 export default function AppWrapper(props: AppWrapperProps) {
   const [activeTab, setActiveTab] = useState("chat");
   const [device, setDevice] = useState<"desktop" | "tablet" | "phone">("desktop");
   const [mobileView, setMobileView] = useState<"chat" | "preview">("chat");
+
+  useEffect(() => {
+    if (props.authToken) {
+      const auth = getAuth();
+      signInWithCustomToken(auth, props.authToken).catch((error) => {
+        console.error("Error signing in with custom token:", error);
+      });
+    }
+  }, [props.authToken]);
 
   return (
     <QueryClientProvider client={queryClient}>
