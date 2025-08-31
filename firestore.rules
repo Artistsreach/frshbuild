@@ -24,6 +24,32 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // ===== APP CREATION & MANAGEMENT =====
+    
+    // Apps collection - for storing app metadata and configuration
+    match /apps/{appId} {
+      // Allow read if user is authenticated and has access to the app
+      allow read: if request.auth != null;
+      
+      // Allow create if user is authenticated
+      allow create: if request.auth != null;
+      
+      // Allow update/delete if user is authenticated and owns the app
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // App users collection - for managing app permissions
+    match /appUsers/{appUserId} {
+      // Allow read if user is authenticated and has access to the app
+      allow read: if request.auth != null;
+      
+      // Allow create if user is authenticated
+      allow create: if request.auth != null;
+      
+      // Allow update/delete if user is authenticated and owns the app
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
     // ===== E-COMMERCE STORE RULES =====
     
     match /stores/{storeId} {
@@ -52,36 +78,6 @@ service cloud.firestore {
 
         // Allow create, update, delete if user is authenticated and owns the parent store document
         allow create, update, delete: if request.auth != null && get(/databases/$(database)/documents/stores/$(storeId)).data.merchant_id == request.auth.uid;
-      }
-    }
-
-    // ===== USER MANAGEMENT RULES =====
-    
-    match /users/{userId} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId;
-
-      match /saved_templates/{templateId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      match /notifications/{notificationId} {
-        allow read, update, delete: if request.auth != null && request.auth.uid == userId;
-        allow create: if false; // Disable direct client-side notification creation
-      }
-
-      match /followers/{followerId} {
-        allow read: if true;
-        allow create, delete: if request.auth != null && request.auth.uid == followerId;
-      }
-
-      match /following/{followingId} {
-        allow read: if true;
-        allow create, delete: if request.auth != null && request.auth.uid == userId;
-      }
-
-      match /tasks/{taskId} {
-        allow read, write, create, delete: if request.auth != null && request.auth.uid == userId;
       }
     }
 
