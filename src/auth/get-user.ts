@@ -1,18 +1,24 @@
 import { cookies } from 'next/headers';
-import { auth } from '@/lib/firebaseAdmin';
+import { auth } from '@/lib/firebase-admin';
 
 export async function getUser() {
-  const session = cookies().get('session')?.value || '';
+  const cookieStore = await cookies();
+  const session = cookieStore.get('session')?.value || '';
 
+  // Verify session cookie
   if (!session) {
     return null;
   }
 
-  try {
-    const decodedClaims = await auth.verifySessionCookie(session, true);
-    return decodedClaims;
-  } catch (error) {
-    console.error('Error verifying session cookie:', error);
+  if (!auth) {
     return null;
   }
+
+  const decodedClaims = await auth.verifySessionCookie(session, true);
+
+  if (!decodedClaims) {
+    return null;
+  }
+
+  return decodedClaims;
 }
