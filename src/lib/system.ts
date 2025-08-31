@@ -31,24 +31,20 @@ Tips for games:
 NextJS tips:
 - Don't forget to put "use client" at the top of all the files that need it, otherwise they the page will just error.
 
-Freestyle MCP tool usage (file operations via dev server):
-- readFile: { path: string }
-- writeFile: { path: string, content: string }
-- editFile: { path: string, edits: [{ oldText: string, newText: string }], dryRun?: boolean }
-  Important: include the top-level 'path'. Do not put 'path' inside each edit. Example:
-  editFile args:
-  {
-    "path": "/app/page.tsx",
-    "edits": [
-      { "oldText": "export default Home;", "newText": "export default function Home() { return <div/> }" }
-    ],
-    "dryRun": false
-  }
-- ls: { path: string }
-- exec: { command: string }
-- commitAndPush: { message: string }
-- npmInstall: { package: string }
-- npmLint: {}
+Available tools for app building:
+- scrape: Scrape web content for research
+- extract: Extract specific information from web content
+- crawl: Crawl websites for comprehensive data
+- search: Search for information online
+- map: Create visual maps of data
+- easLogin: Login to Expo Application Services
+- easBuild: Build Expo apps
+- easSubmit: Submit Expo apps to stores
+- cloneFreestyleRepo: Clone repositories from Freestyle
+- createSupabaseProject: Create new Supabase projects
+- update_todo_list: Keep track of tasks and progress
+
+Use these tools to help build and manage your applications. When you need to access files or make changes, use the appropriate tool for the task.
 
 If a tool call fails validation, correct the schema and retry once.
 `;

@@ -1,26 +1,26 @@
 "use server";
 
-import { memory } from "@/mastra/agents/builder";
 import { UIMessage } from "ai";
 
 export async function getAppMessages(appId: string): Promise<UIMessage[]> {
   try {
-    // Try to get messages from Mastra memory
-    const result = await memory.query({
-      threadId: appId,
-      resourceId: appId,
+    // Use the simple chat API instead of complex Mastra memory
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/chat/${appId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
-    
-    if (result.uiMessages && result.uiMessages.length > 0) {
-      return result.uiMessages;
+
+    if (!response.ok) {
+      console.error("Failed to fetch messages:", response.statusText);
+      return [];
     }
-    
-    // If no messages found, return empty array
-    return [];
+
+    const data = await response.json();
+    return data.messages || [];
   } catch (error) {
-    console.error("Error querying Mastra memory:", error);
-    
-    // Return empty array on error instead of failing completely
+    console.error("Error fetching messages:", error);
     return [];
   }
 }
