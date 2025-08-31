@@ -63,6 +63,39 @@ export function getFirebaseAdmin() {
         throw new Error("Invalid Firebase service account: missing project_id or private_key");
       }
 
+      // Fix common private key formatting issues
+      if (serviceAccountJson.private_key) {
+        // Ensure the private key has proper PEM format
+        let privateKey = serviceAccountJson.private_key;
+        
+        // Remove any extra whitespace or formatting
+        privateKey = privateKey.trim();
+        
+        // Ensure it starts with the correct header
+        if (!privateKey.startsWith('-----BEGIN PRIVATE KEY-----')) {
+          // Try to fix common issues
+          if (privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+            // Extract the key between the markers
+            const startMarker = '-----BEGIN PRIVATE KEY-----';
+            const endMarker = '-----END PRIVATE KEY-----';
+            const startIndex = privateKey.indexOf(startMarker);
+            const endIndex = privateKey.indexOf(endMarker);
+            
+            if (startIndex !== -1 && endIndex !== -1) {
+              privateKey = privateKey.substring(startIndex, endIndex + endMarker.length);
+            }
+          } else {
+            // If no markers found, try to wrap it
+            privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
+          }
+        }
+        
+        // Ensure proper line breaks
+        privateKey = privateKey.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        
+        serviceAccountJson.private_key = privateKey;
+      }
+
       console.log("Firebase Admin: Initializing with project ID:", serviceAccountJson.project_id);
 
       initializeApp({
