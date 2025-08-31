@@ -1,9 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ===== APP-SPECIFIC COLLECTIONS =====
-    
-    // Users collection - contains credits and user data
+    // Users collection - contains credits
     match /users/{userId} {
       // Allow read if user is authenticated and accessing their own data
       allow read: if request.auth != null && request.auth.uid == userId;
@@ -18,112 +16,12 @@ service cloud.firestore {
       }
     }
 
-    // Profiles collection - contains user profiles with freestyleIdentity
-    // More permissive for server-side operations during app creation
+    // Profiles collection
     match /profiles/{userId} {
-      // Allow read for authenticated users (needed for server-side operations)
-      allow read: if request.auth != null;
-      
-      // Allow write for authenticated users (needed for server-side operations)
-      allow write: if request.auth != null;
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // ===== APP CREATION & MANAGEMENT =====
-    
-    // Apps collection - for storing app metadata and configuration
-    match /apps/{appId} {
-      // Allow read if user is authenticated and has access to the app
-      allow read: if request.auth != null;
-      
-      // Allow create if user is authenticated
-      allow create: if request.auth != null;
-      
-      // Allow update/delete if user is authenticated and owns the app
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-    }
-
-    // App users collection - for managing app permissions
-    match /appUsers/{appUserId} {
-      // Allow read if user is authenticated and has access to the app
-      allow read: if request.auth != null;
-      
-      // Allow create if user is authenticated
-      allow create: if request.auth != null;
-      
-      // Allow update/delete if user is authenticated and owns the app
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-    }
-
-    // ===== E-COMMERCE STORE RULES =====
-    
-    match /stores/{storeId} {
-      // Public read access for store data
-      allow read: if true;
-
-      // Allow create if user is authenticated and the merchant_id in the new document matches their UID
-      allow create: if request.auth != null && request.resource.data.merchant_id == request.auth.uid;
-      
-      // Allow update and delete if user is authenticated and is the owner of the existing store document
-      allow update, delete: if request.auth != null && resource.data.merchant_id == request.auth.uid;
-
-      // Rules for 'products' subcollection nested under a store
-      match /products/{productId} {
-        // Public read access for products
-        allow read: if true;
-
-        // Allow create, update, delete if user is authenticated and owns the parent store document
-        allow create, update, delete: if request.auth != null && get(/databases/$(database)/documents/stores/$(storeId)).data.merchant_id == request.auth.uid;
-      }
-
-      // Rules for 'collections' subcollection nested under a store
-      match /collections/{collectionId} {
-        // Public read access for collections
-        allow read: if true;
-
-        // Allow create, update, delete if user is authenticated and owns the parent store document
-        allow create, update, delete: if request.auth != null && get(/databases/$(database)/documents/stores/$(storeId)).data.merchant_id == request.auth.uid;
-      }
-    }
-
-    // ===== BUSINESS RULES =====
-    
-    match /contracts/{contractId} {
-      allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null;
-    }
-
-    match /leads/{leadId} {
-      allow create: if request.auth != null;
-    }
-
-    match /public_templates/{templateId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
-    }
-
-    // ===== SOCIAL FEATURES =====
-    
-    match /posts/{postId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow update: if request.auth != null && ((request.auth.uid == resource.data.userId) || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes'])));
-      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
-
-      match /comments/{commentId} {
-        allow read: if true;
-        allow create: if request.auth != null;
-        allow update: if request.auth != null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes']);
-
-        match /replies/{replyId} {
-          allow read: if true;
-          allow create: if request.auth != null;
-        }
-      }
-    }
-
-    // ===== PUBLIC DATA =====
-    
     // Public data (if any)
     match /public_data/{document} {
       allow read: if true;

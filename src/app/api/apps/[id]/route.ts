@@ -54,7 +54,16 @@ export async function GET(
       }
     }
 
-    // Return app data with the actual app owner's user ID
+    // Get the app owner's user ID
+    const appOwner = (
+      await db
+        .select()
+        .from(appUsers)
+        .where(and(eq(appUsers.appId, id), eq(appUsers.permissions, "admin")))
+        .limit(1)
+    ).at(0);
+
+    // Return app data
     return NextResponse.json({
       id: app.info?.id,
       name: app.info?.name,
@@ -65,7 +74,7 @@ export async function GET(
       is_recreatable: app.info?.is_recreatable,
       requires_subscription: app.info?.requires_subscription,
       stripeProductId: app.info?.stripeProductId,
-      userId: app.info?.userId || "", // Use the actual app owner's user ID
+      userId: appOwner?.userId || null, // Return the app owner's user ID
     });
 
   } catch (error) {
