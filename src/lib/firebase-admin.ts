@@ -18,6 +18,12 @@ function getFirebaseAdmin() {
 
     try {
       const serviceAccountJson = JSON.parse(serviceAccount);
+      
+      // Replace \\n with \n in the private_key
+      if (serviceAccountJson.private_key) {
+        serviceAccountJson.private_key = serviceAccountJson.private_key.replace(/\\n/g, '\n');
+      }
+
       console.log("Firebase Admin: Initializing with project ID:", serviceAccountJson.project_id);
 
       initializeApp({
