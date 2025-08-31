@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Trash, ExternalLink, MoreVertical, Globe, Pencil, Image } from "lucide-react";
+import { Trash, ExternalLink, MoreVertical, Globe, Pencil, Image, Copy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { deleteApp } from "@/actions/delete-app";
@@ -21,6 +21,7 @@ import { EditAppNameModal } from "./edit-app-name-modal";
 import { StatsModal } from "./stats-modal";
 import { MintNftModal } from "./mint-nft-modal";
 import { TierSelectionModal } from "./tier-selection-modal";
+import { RecreateButton } from "./recreate-button";
 
 type AppCardProps = {
   id: string;
@@ -30,6 +31,7 @@ type AppCardProps = {
   deletable?: boolean;
   public?: boolean;
   stripeProductId?: string;
+  is_recreatable?: boolean;
   source: "user" | "community";
 };
 
@@ -41,6 +43,7 @@ export function AppCard({
   deletable = true,
   public: isPublic,
   stripeProductId,
+  is_recreatable = false,
   source,
 }: AppCardProps) {
   const [isMintModalOpen, setIsMintModalOpen] = useState(false);
@@ -115,6 +118,10 @@ export function AppCard({
       </div>
 
       <div className="absolute bottom-4 right-4 flex gap-2">
+        {/* Show recreate button for community apps that are recreatable */}
+        {source === "community" && is_recreatable && (
+          <RecreateButton sourceAppId={id} />
+        )}
         {deletable && isPublic && !stripeProductId && (
           <CrowdfundModal appName={name} appId={id} onSuccess={onDelete} />
         )}

@@ -7,23 +7,34 @@ import { easLoginTool, easBuildTool, easSubmitTool } from "../tools/expo";
 import { cloneRepoTool } from "../tools/git";
 import { createProjectTool } from "../tools/supabase";
 import { Memory } from "@mastra/memory";
+import { PostgresStore, PgVector } from "@mastra/pg";
 import { z } from "zod";
 
-// Use a simple in-memory store instead of PostgreSQL
 export const memory = new Memory({
   options: {
-    lastMessages: 100,
+    lastMessages: 1000,
     semanticRecall: false,
     threads: {
       generateTitle: true,
     },
   },
-  // Use default in-memory storage instead of PostgreSQL
+  vector: new PgVector({
+    connectionString: process.env.DATABASE_URL!,
+  }),
+  storage: new PostgresStore({
+    connectionString: process.env.DATABASE_URL!,
+  }),
+  processors: [
+    // new ToolCallFilter({
+    //   exclude: ["read_file", "read_multiple_files"],
+    // }),
+    // new TokenLimiter(100_000),
+  ],
 });
 
 export const builderAgent = new Agent({
   name: "BuilderAgent",
-  model: openai("gpt-4o-mini"),
+  model: openai("/ referencedocumentation / o"),
   instructions: SYSTEM_MESSAGE,
   memory,
   tools: {

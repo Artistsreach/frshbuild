@@ -61,16 +61,17 @@ export function UserApps() {
           {items.map((app: any) => (
             <AppCard
               key={app.id}
-            id={app.id}
-            name={app.name}
-            createdAt={app.createdAt}
-            deletable={app.deletable}
-            public={app.is_public}
-            onDelete={onAppDeleted}
-            stripeProductId={app.stripeProductId}
-            source={view === "user" ? "user" : "community"}
-          />
-        ))}
+              id={app.id}
+              name={app.name}
+              createdAt={app.createdAt}
+              deletable={app.deletable}
+              public={app.is_public}
+              onDelete={onAppDeleted}
+              stripeProductId={app.stripeProductId}
+              is_recreatable={app.is_recreatable}
+              source={view === "user" ? "user" : "community"}
+            />
+          ))}
         </div>
       </div>
     </div>

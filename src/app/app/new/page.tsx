@@ -11,7 +11,6 @@ export default function NewAppRedirectPage() {
   const { user, profile, loading } = useAuth();
   const [isCreating, setIsCreating] = useState(false);
   const [profileChecked, setProfileChecked] = useState(false);
-  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     const handleAppCreation = async () => {
@@ -20,8 +19,7 @@ export default function NewAppRedirectPage() {
         user: user ? { uid: user.uid, email: user.email } : null,
         profile: profile ? { uid: profile.uid, freestyleIdentity: profile.freestyleIdentity } : null,
         isCreating,
-        profileChecked,
-        hasError
+        profileChecked
       });
 
       if (loading) {
@@ -56,12 +54,6 @@ export default function NewAppRedirectPage() {
         return;
       }
 
-      // If we've already had an error, don't retry automatically
-      if (hasError) {
-        console.log("Previous error occurred, not retrying automatically");
-        return;
-      }
-
       if (isCreating) {
         console.log("Already creating app, skipping...");
         return; // Prevent multiple creations
@@ -78,22 +70,17 @@ export default function NewAppRedirectPage() {
 
         console.log("Creating app with:", { message, template, userId: user.uid });
 
-        const result = await createApp({
+        const { id } = await createApp({
           initialMessage: message,
           templateId: template,
           userId: user.uid,
         });
 
-        if (!result.success) {
-          throw new Error(result.error || "Failed to create app");
-        }
-
-        console.log("App created successfully, redirecting to:", `/app/${result.appId}`);
-        router.replace(`/app/${result.appId}`);
+        console.log("App created successfully, redirecting to:", `/app/${id}`);
+        router.replace(`/app/${id}`);
       } catch (error) {
         console.error("Error creating app:", error);
         setIsCreating(false);
-        setHasError(true); // Mark that we've had an error
         
         // Redirect back to home page with error
         const message = searchParams.get("message") || "";
@@ -105,7 +92,7 @@ export default function NewAppRedirectPage() {
     };
 
     handleAppCreation();
-  }, [user, profile, loading, searchParams, router, profileChecked]); // Removed isCreating and hasError from dependencies
+  }, [user, profile, loading, searchParams, router, isCreating, profileChecked]);
 
   // Show loading while checking authentication, waiting for profile, or creating app
   if (loading || !profile || !profile.freestyleIdentity || isCreating) {

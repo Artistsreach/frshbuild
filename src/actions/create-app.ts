@@ -1,20 +1,13 @@
 "use server";
 
+import { sendMessage } from "@/app/api/chat/route";
 import { appsTable, appUsers } from "@/db/schema";
 import { db } from "@/lib/db";
-import { getFirebaseAdminFirestore } from "@/lib/firebase-admin";
-import { freestyleHelpers } from "@/lib/freestyle";
-import { getTemplate, templates } from "@/lib/templates";
-import { builderAgent } from "@/mastra/agents/builder";
-
-export interface CreateAppResult {
-  success: boolean;
-  appId?: string;
-  gitRepo?: string;
-  ephemeralUrl?: string;
-  mcpEphemeralUrl?: string;
-  error?: string;
-}
+import { doc, getDoc } from "firebase/firestore";
+import { db as firestoreDb } from "@/lib/firebaseClient";
+import { freestyle } from "@/lib/freestyle";
+import { templates } from "@/lib/templates";
+import { memory } from "@/mastra/agents/builder";
 
 export async function createApp({
   initialMessage,
@@ -24,151 +17,143 @@ export async function createApp({
   initialMessage?: string;
   templateId: string;
   userId: string;
-}): Promise<CreateAppResult> {
-  try {
-    // Step 1: Validate template and get user profile
-    const template = getTemplate(templateId);
-    if (!template) {
-      return {
-        success: false,
-        error: `Template ${templateId} not found. Available templates: ${Object.keys(templates).join(", ")}`
-      };
-    }
+}) {
+  console.time("get user profile");
+  
+  // Get user profile from Firestore using the provided userId
+  const profileRef = doc(firestoreDb, "profiles", userId);
+  const profileSnap = await getDoc(profileRef);
+  const profile = profileSnap.data();
 
-    // Use Firebase Admin SDK for server-side operations
-    const adminDb = getFirebaseAdminFirestore();
-    if (!adminDb) {
-      return {
-        success: false,
-        error: "Firebase Admin not available"
-      };
-    }
-    
-    const profileRef = adminDb.collection("profiles").doc(userId);
-    const profileSnap = await profileRef.get();
-    const profile = profileSnap.data();
+  if (!profile) {
+    throw new Error("User profile not found");
+  }
 
-    if (!profile) {
-      return {
-        success: false,
-        error: "User profile not found"
-      };
-    }
+  // Check if user has freestyleIdentity
+  if (!profile.freestyleIdentity) {
+    console.error("User profile missing freestyleIdentity:", userId);
+    throw new Error("User identity not found. Please refresh the page and try again.");
+  }
 
-    if (!profile.freestyleIdentity) {
-      return {
-        success: false,
-        error: "User identity not found. Please refresh the page and try again."
-      };
-    }
+  console.log("Using freestyleIdentity:", profile.freestyleIdentity);
+  console.timeEnd("get user profile");
 
-    console.log("Creating app with template:", template.name);
-    console.log("User freestyleIdentity:", profile.freestyleIdentity);
-
-    // Step 2: Create Git repository
-    console.log("Creating Git repository...");
-    const repo = await freestyleHelpers.createRepository(
-      initialMessage || `New ${template.name} App`,
-      false, // Private by default
-      template.repo
+  if (!templates[templateId]) {
+    throw new Error(
+      `Template ${templateId} not found. Available templates: ${Object.keys(templates).join(", ")}`
     );
-    
-    console.log("Repository created:", repo.repoId);
-    
-    // Step 3: Grant Git permissions
-    await freestyleHelpers.grantPermission(
-      profile.freestyleIdentity,
-      repo.repoId,
-      "write"
-    );
-    console.log("Git permission granted");
+  }
 
-    // Step 4: Create Git access token
-    const token = await freestyleHelpers.createAccessToken(profile.freestyleIdentity);
-    console.log("Git access token created");
+  // Generate a proper app name
+  const appName = initialMessage?.trim() || "Unnamed App";
+  const appDescription = initialMessage?.trim() || "No description";
 
-    // Step 5: Request dev server with template-specific configuration
-    console.log("Requesting dev server...");
-    const devServerResult = await freestyleHelpers.requestDevServer(repo.repoId, templateId);
-    console.log("Dev server requested:", {
-      ephemeralUrl: devServerResult.ephemeralUrl,
-      mcpEphemeralUrl: devServerResult.mcpEphemeralUrl
-    });
+  console.time("git");
+  const repo = await freestyle.createGitRepository({
+    name: appName,
+    public: true,
+    source: {
+      type: "git",
+      url: templates[templateId].repo,
+    },
+  });
+  
+  console.log("Repository created:", repo.repoId);
+  
+  await freestyle.grantGitPermission({
+    identityId: profile.freestyleIdentity,
+    repoId: repo.repoId,
+    permission: "write",
+  });
 
-    // Step 6: Create app in database
-    const app = await db.transaction(async (tx) => {
-      const appInsertion = await tx
-        .insert(appsTable)
-        .values({
-          gitRepo: repo.repoId,
-          name: initialMessage || `New ${template.name} App`,
-          is_public: false,
-          is_recreatable: true, // Enable recreation by default
-          baseId: templateId,
-        })
-        .returning();
+  console.log("Git permission granted");
 
-      await tx
-        .insert(appUsers)
-        .values({
-          appId: appInsertion[0].id,
-          userId: userId,
-          permissions: "admin",
-          freestyleAccessToken: token.token,
-          freestyleAccessTokenId: token.id,
-          freestyleIdentity: profile.freestyleIdentity,
-        })
-        .returning();
+  const token = await freestyle.createGitAccessToken({
+    identityId: profile.freestyleIdentity,
+  });
 
-      return appInsertion[0];
-    });
+  console.log("Git access token created");
+  console.timeEnd("git");
 
-    // Step 7: Initialize AI agent memory thread (if initial message provided)
-    if (initialMessage && initialMessage.trim()) {
-      try {
-        console.log("Initializing AI agent memory thread...");
-        const threadId = `app_${app.id}`;
-        const resourceId = `user_${userId}`;
-        
-        // Create initial conversation with the AI agent
-        const response = await builderAgent.generate(
-          `I want to build an app with the following description: "${initialMessage}". 
-           This is a ${template.name} application. Please help me understand what needs to be built and provide guidance on the next steps.`,
+  console.time("dev server");
+  const { mcpEphemeralUrl } = await freestyle.requestDevServer({
+    repoId: repo.repoId,
+  });
+  console.timeEnd("dev server");
+
+  const app = await db.transaction(async (tx) => {
+    const appInsertion = await tx
+      .insert(appsTable)
+      .values({
+        gitRepo: repo.repoId,
+        name: appName,
+        description: appDescription,
+        is_public: false, // Start as private by default
+        is_recreatable: false, // Start as not recreatable by default
+        requires_subscription: false, // Start as free by default
+        baseId: templateId,
+      })
+      .returning();
+
+    await tx
+      .insert(appUsers)
+      .values({
+        appId: appInsertion[0].id,
+        userId: userId,
+        permissions: "admin",
+        freestyleAccessToken: token.token,
+        freestyleAccessTokenId: token.id,
+        freestyleIdentity: profile.freestyleIdentity,
+      })
+      .returning();
+
+    return appInsertion[0];
+  });
+
+  console.time("mastra: create thread");
+  await memory.createThread({
+    threadId: app.id,
+    resourceId: app.id,
+  });
+  console.timeEnd("mastra: create thread");
+
+  if (initialMessage) {
+    const trimmed = initialMessage.trim();
+    if (trimmed.length > 0) {
+      console.time("send initial message");
+      const msg = {
+        id: crypto.randomUUID(),
+        parts: [
           {
-            threadId,
-            resourceId,
+            text: trimmed,
+            type: "text" as const,
+          },
+        ],
+        role: "user" as const,
+      };
+      const maxAttempts = 3;
+      let attempt = 0;
+      let lastError: unknown = undefined;
+      while (attempt < maxAttempts) {
+        try {
+          if (attempt > 0) {
+            const delay = 400 * attempt; // simple backoff
+            await new Promise((r) => setTimeout(r, delay));
           }
-        );
-        
-        console.log("AI agent initialized with response:", response.text);
-      } catch (error) {
-        console.error("Error initializing AI agent:", error);
-        // Don't fail the app creation if AI agent fails
+          await sendMessage(app.id, mcpEphemeralUrl, msg as any);
+          lastError = undefined;
+          break;
+        } catch (e) {
+          lastError = e;
+          attempt++;
+        }
+      }
+      console.timeEnd("send initial message");
+      if (lastError) {
+        console.error("Failed to send initial message after retries", lastError);
       }
     }
-
-    console.log("App created successfully:", {
-      appId: app.id,
-      gitRepo: repo.repoId,
-      template: template.name,
-      initialMessage: initialMessage || "No initial message",
-      ephemeralUrl: devServerResult.ephemeralUrl,
-      mcpEphemeralUrl: devServerResult.mcpEphemeralUrl
-    });
-
-    return {
-      success: true,
-      appId: app.id,
-      gitRepo: repo.repoId,
-      ephemeralUrl: devServerResult.ephemeralUrl,
-      mcpEphemeralUrl: devServerResult.mcpEphemeralUrl,
-    };
-
-  } catch (error) {
-    console.error("Error creating app:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred"
-    };
   }
+
+  return app;
 }

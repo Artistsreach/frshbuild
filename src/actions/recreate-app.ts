@@ -7,7 +7,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db as firestoreDb } from "@/lib/firebaseClient";
 import { freestyle } from "@/lib/freestyle";
 import { eq } from "drizzle-orm";
-import { builderAgent } from "@/mastra/agents/builder";
+import { memory } from "@/mastra/agents/builder";
 
 export async function recreateApp(sourceAppId: string) {
   const user = await getUser();
@@ -78,10 +78,11 @@ export async function recreateApp(sourceAppId: string) {
     return inserted[0];
   });
 
-  // Note: Memory thread creation is temporarily disabled to avoid 500 errors
-  // from PostgreSQL dependencies in the memory module
-  // TODO: Re-enable when memory system dependencies are resolved
-  console.log("App recreated successfully, memory thread will be created on first visit:", newApp.id);
+  // Create a Mastra thread for the new app so the app page can load chat state
+  await memory.createThread({
+    threadId: newApp.id,
+    resourceId: newApp.id,
+  });
 
   return { appId: newApp.id } as const;
 }

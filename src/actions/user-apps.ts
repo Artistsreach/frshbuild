@@ -17,6 +17,7 @@ export async function getUserApps() {
         gitRepo: appsTable.gitRepo,
         createdAt: appsTable.createdAt,
         is_public: appsTable.is_public,
+        is_recreatable: appsTable.is_recreatable,
         permissions: appUsers.permissions,
         stripeProductId: appsTable.stripeProductId,
       })
@@ -35,6 +36,7 @@ export async function getUserApps() {
         createdAt: appsTable.createdAt,
         stripeProductId: appsTable.stripeProductId,
         is_public: appsTable.is_public,
+        is_recreatable: appsTable.is_recreatable,
       })
       .from(appsTable)
       .where(eq(appsTable.is_public, true))
