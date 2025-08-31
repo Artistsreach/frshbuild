@@ -10,6 +10,7 @@ export default function NewAppRedirectPage() {
   const searchParams = useSearchParams();
   const { user, profile, loading } = useAuth();
   const [isCreating, setIsCreating] = useState(false);
+  const [profileChecked, setProfileChecked] = useState(false);
 
   useEffect(() => {
     const handleAppCreation = async () => {
@@ -17,7 +18,8 @@ export default function NewAppRedirectPage() {
         loading, 
         user: user ? { uid: user.uid, email: user.email } : null,
         profile: profile ? { uid: profile.uid, freestyleIdentity: profile.freestyleIdentity } : null,
-        isCreating 
+        isCreating,
+        profileChecked
       });
 
       if (loading) {
@@ -45,6 +47,10 @@ export default function NewAppRedirectPage() {
       if (!profile.freestyleIdentity) {
         // User doesn't have freestyleIdentity yet, show loading
         console.log("User doesn't have freestyleIdentity yet, waiting for it to be created...");
+        // Mark that we've checked the profile and are waiting for freestyleIdentity
+        if (!profileChecked) {
+          setProfileChecked(true);
+        }
         return;
       }
 
@@ -86,7 +92,7 @@ export default function NewAppRedirectPage() {
     };
 
     handleAppCreation();
-  }, [user, profile, loading, searchParams, router, isCreating]);
+  }, [user, profile, loading, searchParams, router, isCreating, profileChecked]);
 
   // Show loading while checking authentication, waiting for profile, or creating app
   if (loading || !profile || !profile.freestyleIdentity || isCreating) {
