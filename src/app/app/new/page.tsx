@@ -8,7 +8,7 @@ import { createApp } from "@/actions/create-app";
 export default function NewAppRedirectPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
@@ -16,6 +16,7 @@ export default function NewAppRedirectPage() {
       console.log("App creation flow started:", { 
         loading, 
         user: user ? { uid: user.uid, email: user.email } : null,
+        profile: profile ? { uid: profile.uid, freestyleIdentity: profile.freestyleIdentity } : null,
         isCreating 
       });
 
@@ -31,6 +32,18 @@ export default function NewAppRedirectPage() {
         const redirectUrl = `/?message=${encodeURIComponent(message)}&template=${template}&signin=true`;
         console.log("User not authenticated, redirecting to:", redirectUrl);
         router.replace(redirectUrl);
+        return;
+      }
+
+      if (!profile) {
+        // Profile is still loading, wait a bit more
+        console.log("Profile still loading, waiting...");
+        return;
+      }
+
+      if (!profile.freestyleIdentity) {
+        // User doesn't have freestyleIdentity yet, show loading
+        console.log("User doesn't have freestyleIdentity yet, waiting for it to be created...");
         return;
       }
 
@@ -72,20 +85,33 @@ export default function NewAppRedirectPage() {
     };
 
     handleAppCreation();
-  }, [user, loading, searchParams, router, isCreating]);
+  }, [user, profile, loading, searchParams, router, isCreating]);
 
-  // Show loading while checking authentication or creating app
-  if (loading || isCreating) {
+  // Show loading while checking authentication, waiting for profile, or creating app
+  if (loading || !profile || !profile.freestyleIdentity || isCreating) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">
-            {loading ? "Checking authentication..." : "Creating your app..."}
+            {loading ? "Checking authentication..." : 
+             !profile ? "Loading profile..." :
+             !profile.freestyleIdentity ? "Setting up your development environment..." :
+             "Creating your app..."}
           </p>
           {loading && (
             <p className="mt-2 text-sm text-muted-foreground">
               Please wait while we verify your authentication...
+            </p>
+          )}
+          {!profile && !loading && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Loading your profile...
+            </p>
+          )}
+          {profile && !profile.freestyleIdentity && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Setting up your development environment...
             </p>
           )}
           {isCreating && (

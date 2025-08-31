@@ -1,10 +1,10 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebaseClient';
-import { initializeCredits } from '../lib/credits';
+import { createContext, useContext, useEffect, useState } from "react";
+import { onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebaseClient";
+import { freestyle } from "@/lib/freestyle";
 
 interface UserProfile {
   uid: string;
@@ -17,45 +17,33 @@ interface UserProfile {
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: any;
   profile: UserProfile | null;
   loading: boolean;
   logout: () => Promise<void>;
-  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
-
-  // Prevent hydration issues by only running auth logic after mounting
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
-    if (!mounted) return;
-
-    let profileUnsubscribe = () => {};
-
-    const authUnsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setLoading(true);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-
-      profileUnsubscribe();
+      let profileUnsubscribe: (() => void) | undefined;
 
       if (currentUser) {
         console.log('User authenticated:', currentUser.uid);
 
         // Initialize credits for new users
         try {
+          const { initializeCredits } = await import("@/lib/credits");
           await initializeCredits(currentUser.uid);
         } catch (error) {
-          console.error('Error initializing credits:', error);
+          console.error("Error initializing credits:", error);
         }
 
         // Listen to profile changes
@@ -64,6 +52,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (profileSnap.exists()) {
             const profileData = { uid: currentUser.uid, ...profileSnap.data() } as UserProfile;
             console.log('Profile loaded:', profileData);
+            
+            // Check if user needs freestyleIdentity
+            if (!profileData.freestyleIdentity) {
+              console.log('Creating freestyleIdentity for user:', currentUser.uid);
+              try {
+                const identity = await freestyle.createGitIdentity();
+                console.log('FreestyleIdentity created:', identity.id);
+                
+                // Update profile with freestyleIdentity
+                await setDoc(profileRef, { 
+                  freestyleIdentity: identity.id 
+                }, { merge: true });
+                
+                console.log('Profile updated with freestyleIdentity');
+                // The profile will be updated via the onSnapshot listener
+              } catch (error) {
+                console.error('Error creating freestyleIdentity:', error);
+                // Continue without freestyleIdentity for now
+              }
+            }
+            
             setProfile(profileData);
           } else {
             // Create profile if it doesn't exist
@@ -75,15 +84,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 createdAt: new Date(),
                 displayName: currentUser.displayName || undefined,
                 photoURL: currentUser.photoURL || undefined,
-                // Note: freestyleIdentity will be set later when user creates their first app
+                // freestyleIdentity will be created in the onSnapshot listener above
               };
               
               await setDoc(profileRef, newProfile);
-              setProfile({ 
-                uid: currentUser.uid, 
-                ...newProfile
-              });
               console.log('Profile created successfully');
+              
+              // The profile will be updated via the onSnapshot listener
             } catch (error) {
               console.error('Error creating profile:', error);
               setProfile(null);
@@ -100,13 +107,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(null);
         setLoading(false);
       }
+
+      return () => {
+        if (profileUnsubscribe) {
+          profileUnsubscribe();
+        }
+      };
     });
 
-    return () => {
-      authUnsubscribe();
-      profileUnsubscribe();
-    };
-  }, [mounted]);
+    return unsubscribe;
+  }, []);
 
   const logout = async () => {
     try {
@@ -116,25 +126,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const value: AuthContextType = {
+  const context: AuthContextType = {
     user,
     profile,
-    loading: !mounted || loading,
+    loading,
     logout,
-    isAuthenticated: !!user,
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={context}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

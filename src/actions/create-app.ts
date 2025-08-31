@@ -3,7 +3,7 @@
 import { sendMessage } from "@/app/api/chat/route";
 import { appsTable, appUsers } from "@/db/schema";
 import { db } from "@/lib/db";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { db as firestoreDb } from "@/lib/firebaseClient";
 import { freestyle } from "@/lib/freestyle";
 import { templates } from "@/lib/templates";
@@ -23,32 +23,16 @@ export async function createApp({
   // Get user profile from Firestore using the provided userId
   const profileRef = doc(firestoreDb, "profiles", userId);
   const profileSnap = await getDoc(profileRef);
-  let profile = profileSnap.data();
+  const profile = profileSnap.data();
 
   if (!profile) {
     throw new Error("User profile not found");
   }
 
-  // If user doesn't have a freestyleIdentity, create one
+  // Check if user has freestyleIdentity
   if (!profile.freestyleIdentity) {
-    console.log("Creating freestyleIdentity for user:", userId);
-    try {
-      const identity = await freestyle.createGitIdentity();
-      console.log("FreestyleIdentity created:", identity.id);
-      
-      // Update the profile with the new freestyleIdentity
-      await setDoc(profileRef, { freestyleIdentity: identity.id }, { merge: true });
-      profile = { ...profile, freestyleIdentity: identity.id };
-      console.log("Profile updated with freestyleIdentity:", identity.id);
-    } catch (error) {
-      console.error("Error creating freestyleIdentity:", error);
-      throw new Error("Failed to create user identity");
-    }
-  }
-
-  // Double-check that we have a valid freestyleIdentity
-  if (!profile.freestyleIdentity) {
-    throw new Error("FreestyleIdentity is still undefined after creation attempt");
+    console.error("User profile missing freestyleIdentity:", userId);
+    throw new Error("User identity not found. Please refresh the page and try again.");
   }
 
   console.log("Using freestyleIdentity:", profile.freestyleIdentity);
