@@ -13,6 +13,8 @@ import { Banknote, CoinsIcon } from "lucide-react";
 import Stars from "@/components/ui/stars";
 import { useAuth } from "@/contexts/AuthContext";
 import { firebaseFunctions } from "@/lib/firebaseFunctions";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, Info } from "lucide-react";
 
 import { ModeToggle } from "@/components/theme-toggle";
 import { UserApps } from "@/components/user-apps";
@@ -27,6 +29,8 @@ function HomePageContent() {
   const [fundingLoading, setFundingLoading] = useState(false);
   const [credits, setCredits] = useState<number>(0);
   const [creditsLoading, setCreditsLoading] = useState(true);
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+  const [showError, setShowError] = useState(false);
   const router = useRouter();
   const submittedRef = useRef(false);
   const { user } = useAuth();
@@ -35,13 +39,20 @@ function HomePageContent() {
     if (submittedRef.current) return;
     const usedPrompt = (overridePrompt ?? prompt) || "";
     if (!usedPrompt.trim()) return;
+    
+    // Check if user is authenticated
+    if (!user) {
+      setShowSignInPrompt(true);
+      return;
+    }
+    
     submittedRef.current = true;
     setIsLoading(true);
 
     router.push(
       `/app/new?message=${encodeURIComponent(usedPrompt)}&template=${framework}`
     );
-  }, [prompt, framework, router]);
+  }, [prompt, framework, router, user]);
 
   useEffect(() => {
     // 1) Tell parent we're ready
@@ -62,10 +73,21 @@ function HomePageContent() {
     try {
       const search = new URLSearchParams(window.location.search);
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-      const urlPrompt = search.get("prompt") || hash.get("prompt");
+      const urlPrompt = search.get("prompt") || hash.get("prompt") || search.get("message");
       const autobuild = search.get("autobuild") || hash.get("autobuild");
+      const signinPrompt = search.get("signin");
+      const errorState = search.get("error");
+      
       if (urlPrompt) {
         applyPrompt(urlPrompt, autobuild === "1" || autobuild === "true");
+      }
+      
+      if (signinPrompt === "true") {
+        setShowSignInPrompt(true);
+      }
+      
+      if (errorState === "true") {
+        setShowError(true);
       }
     } catch {}
 
@@ -189,6 +211,26 @@ function HomePageContent() {
           <p className="text-neutral-600 dark:text-neutral-400 text-center mb-6 text-2xl sm:text-3xl md:text-4xl font-bold">
             What do you want to build?
           </p>
+
+          {/* Sign-in prompt alert */}
+          {showSignInPrompt && (
+            <Alert className="mb-4 w-full max-w-lg">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                Please sign in to continue building your app. Your prompt has been saved.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Error alert */}
+          {showError && (
+            <Alert className="mb-4 w-full max-w-lg" variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                There was an error creating your app. Please try again.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div className="w-full relative my-5">
             <div className="relative w-full max-w-full overflow-hidden">

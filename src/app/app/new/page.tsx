@@ -1,6 +1,6 @@
 import { createApp } from "@/actions/create-app";
 import { redirect } from "next/navigation";
-import { getUser } from "@/actions/get-user";
+import { getUser } from "@/auth/get-user";
 
 // Force dynamic rendering to avoid static generation issues with cookies
 export const dynamic = 'force-dynamic';
@@ -15,38 +15,39 @@ export default async function NewAppRedirectPage({
   searchParams: Promise<{ [key: string]: string | string[] }>;
   params: Promise<{ id: string }>;
 }) {
-  const user = await getUser().catch(() => undefined);
   const search = await searchParams;
+  
+  try {
+    const user = await getUser();
+    console.log("User authentication check:", { user: user ? { uid: user.uid } : null });
+    
+    if (!user) {
+      // Redirect back to home page with the prompt and a sign-in message
+      const redirectUrl = `/?message=${encodeURIComponent(search.message as string || "")}&template=${search.template || "nextjs"}&signin=true`;
+      console.log("Redirecting to home with sign-in prompt:", redirectUrl);
+      redirect(redirectUrl);
+    }
 
-  if (!user) {
-    // reconstruct the search params
-    const newParams = new URLSearchParams();
-    Object.entries(search).forEach(([key, value]) => {
-      if (Array.isArray(value)) {
-        value.forEach((v) => newParams.append(key, v));
-      } else {
-        newParams.set(key, value);
-      }
+    // Extract message safely; do not double-decode here
+    const rawMessage = Array.isArray(search.message)
+      ? (search.message[0] as string | undefined)
+      : (search.message as string | undefined);
+    const message = rawMessage ?? undefined;
+
+    console.log("Creating app with:", { message, template: search.template, userId: user.uid });
+
+    const { id } = await createApp({
+      initialMessage: message,
+      templateId: (search.template as string) || "nextjs",
     });
 
-    // After sign in, redirect back to this page with the initial search params
-    redirect(
-      `/handler/sign-in?after_auth_return_to=${encodeURIComponent(
-        "/app/new?" + newParams.toString()
-      )}`
-    );
+    console.log("App created successfully, redirecting to:", `/app/${id}`);
+    redirect(`/app/${id}`);
+  } catch (error) {
+    console.error("Error in NewAppRedirectPage:", error);
+    
+    // If there's an error, redirect back to home page
+    const redirectUrl = `/?message=${encodeURIComponent(search.message as string || "")}&template=${search.template || "nextjs"}&error=true`;
+    redirect(redirectUrl);
   }
-
-  // Extract message safely; do not double-decode here
-  const rawMessage = Array.isArray(search.message)
-    ? (search.message[0] as string | undefined)
-    : (search.message as string | undefined);
-  const message = rawMessage ?? undefined;
-
-  const { id } = await createApp({
-    initialMessage: message,
-    templateId: (search.template as string) || "nextjs",
-  });
-
-  redirect(`/app/${id}`);
 }
