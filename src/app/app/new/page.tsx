@@ -43,8 +43,13 @@ export default async function NewAppRedirectPage({
 
     console.log("App created successfully, redirecting to:", `/app/${id}`);
     redirect(`/app/${id}`);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in NewAppRedirectPage:", error);
+    
+    // Don't log NEXT_REDIRECT errors as they are expected
+    if (error.message === "NEXT_REDIRECT") {
+      throw error; // Re-throw NEXT_REDIRECT errors as they are handled by Next.js
+    }
     
     // If there's an error, redirect back to home page
     const redirectUrl = `/?message=${encodeURIComponent(search.message as string || "")}&template=${search.template || "nextjs"}&error=true`;

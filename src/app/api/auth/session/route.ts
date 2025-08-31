@@ -12,10 +12,10 @@ export async function GET() {
       const auth = getFirebaseAuth();
 
       if (!auth) {
-        return NextResponse.json(
-          { error: "Authentication service not available" },
-          { status: 503 }
-        );
+        console.warn("Firebase Admin auth is null, returning unauthenticated");
+        const response = NextResponse.json({ isAuthenticated: false });
+        response.cookies.set("session", "", { maxAge: 0, path: "/" });
+        return response;
       }
 
       const decodedClaims = await auth.verifySessionCookie(sessionValue, true);
@@ -24,6 +24,7 @@ export async function GET() {
         user: decodedClaims,
       });
     } catch (error) {
+      console.error("Session verification error:", error);
       // Session cookie is invalid, clear it.
       const response = NextResponse.json({ isAuthenticated: false });
       response.cookies.set("session", "", { maxAge: 0, path: "/" });
@@ -55,7 +56,6 @@ export async function POST(request: NextRequest) {
       }, { status: 503 });
     }
 
-    // Check if auth is null (development mode without Firebase Admin)
     if (!auth) {
       console.warn("Firebase Admin auth is null, returning fallback response");
       return NextResponse.json({ 
@@ -73,8 +73,8 @@ export async function POST(request: NextRequest) {
     response.cookies.set("session", sessionCookie, {
       maxAge: expiresIn,
       httpOnly: true,
-      secure: true,
-      sameSite: "none",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
       path: "/",
     });
 
@@ -93,8 +93,8 @@ export async function DELETE() {
   response.cookies.set("session", "", {
     maxAge: 0,
     httpOnly: true,
-    secure: true,
-    sameSite: "none",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
     path: "/",
   });
   return response;

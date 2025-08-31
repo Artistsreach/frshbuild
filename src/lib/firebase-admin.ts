@@ -29,25 +29,45 @@ export function getFirebaseAdmin() {
           serviceAccountJson = JSON.parse(decoded);
         } catch (base64Error) {
           // If both fail, try to clean up the string (remove escape characters)
-          const cleaned = serviceAccount.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+          const cleaned = serviceAccount
+            .replace(/\\n/g, '\n')
+            .replace(/\\"/g, '"')
+            .replace(/\\\\/g, '\\');
           try {
             serviceAccountJson = JSON.parse(cleaned);
           } catch (cleanError) {
-            console.error("Firebase Admin: Failed to parse service account key in all formats:", {
-              parseError,
-              base64Error,
-              cleanError
-            });
-            throw new Error("Invalid Firebase service account key format");
+            // Last attempt: try to fix common formatting issues
+            const fixed = serviceAccount
+              .replace(/\\n/g, '\n')
+              .replace(/\\"/g, '"')
+              .replace(/\\\\/g, '\\')
+              .replace(/\n\s*/g, '\n') // Remove extra spaces after newlines
+              .replace(/"\s*\n\s*"/g, '"\n"'); // Fix spacing around newlines in strings
+            try {
+              serviceAccountJson = JSON.parse(fixed);
+            } catch (finalError) {
+              console.error("Firebase Admin: Failed to parse service account key in all formats:", {
+                parseError,
+                base64Error,
+                cleanError,
+                finalError
+              });
+              throw new Error("Invalid Firebase service account key format");
+            }
           }
         }
+      }
+
+      // Validate the service account JSON
+      if (!serviceAccountJson.project_id || !serviceAccountJson.private_key) {
+        throw new Error("Invalid Firebase service account: missing project_id or private_key");
       }
 
       console.log("Firebase Admin: Initializing with project ID:", serviceAccountJson.project_id);
 
       initializeApp({
         credential: cert(serviceAccountJson),
-        projectId: "fresh25",
+        projectId: serviceAccountJson.project_id || "fresh25",
       });
 
       console.log("Firebase Admin: Successfully initialized");
