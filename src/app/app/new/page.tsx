@@ -74,6 +74,7 @@ export default function NewAppRedirectPage() {
           initialMessage: message,
           templateId: template,
           userId: user.uid,
+          freestyleIdentity: profile.freestyleIdentity!,
         });
 
         console.log("App created successfully, redirecting to:", `/app/${id}`);
