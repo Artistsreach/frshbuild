@@ -41,8 +41,21 @@ export default function AppPage() {
       try {
         setAppLoading(true);
         
+        // Prepare headers for authentication
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        
+        // Add user ID header if user is authenticated
+        if (user?.uid) {
+          headers['x-user-id'] = user.uid;
+        }
+        
         // Fetch app data from API
-        const response = await fetch(`/api/apps/${id}`);
+        const response = await fetch(`/api/apps/${id}`, {
+          headers,
+        });
+        
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.error || "Failed to load app");
@@ -81,7 +94,7 @@ export default function AppPage() {
     };
 
     loadApp();
-  }, [id, loading]);
+  }, [id, loading, user]);
 
   // Show loading while auth is loading or app is loading
   if (loading || appLoading) {

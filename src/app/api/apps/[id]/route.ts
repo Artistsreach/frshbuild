@@ -54,7 +54,7 @@ export async function GET(
       }
     }
 
-    // Return app data
+    // Return app data with the actual app owner's user ID
     return NextResponse.json({
       id: app.info?.id,
       name: app.info?.name,
@@ -65,7 +65,7 @@ export async function GET(
       is_recreatable: app.info?.is_recreatable,
       requires_subscription: app.info?.requires_subscription,
       stripeProductId: app.info?.stripeProductId,
-      userId: user?.id, // Include user ID for ownership checks
+      userId: app.info?.userId || "", // Use the actual app owner's user ID
     });
 
   } catch (error) {
