@@ -1,216 +1,169 @@
-import { getApp } from "@/actions/get-app";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import AppWrapper from "../../../components/app-wrapper-simple";
 import { freestyle } from "@/lib/freestyle";
-import { db } from "@/lib/db";
-import { appSubscriptions, appUsers, apps } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
-import { getAuthToken } from "@/actions/get-auth-token";
 import { memory } from "@/mastra/agents/builder";
-import { buttonVariants } from "@/components/ui/button";
-import Link from "next/link";
-import { chatState } from "@/actions/chat-streaming";
-import { RecreateButton } from "@/components/recreate-button";
-import { DeploymentHistory } from "@/components/deployment-history";
-import { DeploymentStatus } from "@/components/deployment-status";
-import { ExpoDeployModal } from "@/components/expo-deploy-modal";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UIMessage } from "ai";
+import { RecreateButton } from "@/components/recreate-button";
 
-// Force dynamic rendering to avoid static generation issues with cookies
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+interface AppInfo {
+  id: string;
+  name: string;
+  gitRepo: string;
+  is_public: boolean;
+  baseId: string;
+  previewDomain?: string;
+  is_recreatable: boolean;
+  requires_subscription: boolean;
+  stripeProductId?: string;
+  userId: string;
+}
 
-export default async function AppPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] }>;
-}) {
-  try {
-    const { id } = await params;
+export default function AppPage() {
+  const params = useParams();
+  const { user, profile, loading } = useAuth();
+  const [app, setApp] = useState<AppInfo | null>(null);
+  const [appLoading, setAppLoading] = useState(true);
+  const [codeServerUrl, setCodeServerUrl] = useState("");
+  const [ephemeralUrl, setEphemeralUrl] = useState("");
+  const [uiMessages, setUiMessages] = useState<UIMessage[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-    // Fetch the app first to determine if it's public
-    const app = await getApp(id).catch(() => undefined);
+  const id = params.id as string;
 
-    if (!app) {
-      return <ProjectNotFound />;
-    }
+  useEffect(() => {
+    const loadApp = async () => {
+      if (loading) return;
 
-  // Track subscriber flag for client gating
-  let isSubscriber = false;
-
-  const isEffectivelyPublic = app?.info?.is_public || !!app?.info?.stripeProductId;
-
-  const authToken = await getAuthToken();
-  const user = authToken ? { id: authToken.uid } : null;
-
-  // If the app is not public, require authentication and membership
-  if (!isEffectivelyPublic) {
-    if (!user) {
-      return <ProjectNotFound />;
-    }
-
-    const userPermission = (
-      await db
-        .select()
-        .from(appUsers)
-        .where(and(eq(appUsers.userId, user.id), eq(appUsers.appId, id)))
-        .limit(1)
-    ).at(0);
-
-    if (!userPermission?.permissions) {
-      return <ProjectNotFound />;
-    }
-  }
-
-  if (app?.info?.requires_subscription) {
-    if (!user) {
-      return <SubscriptionRequired />;
-    }
-    const [membership, subscription] = await Promise.all([
-      db
-        .select()
-        .from(appUsers)
-        .where(and(eq(appUsers.userId, user.id), eq(appUsers.appId, id)))
-        .limit(1),
-      db
-        .select()
-        .from(appSubscriptions)
-        .where(and(eq(appSubscriptions.userId, user.id), eq(appSubscriptions.appId, id)))
-        .limit(1),
-    ]);
-
-    const hasMembership = !!membership.at(0);
-    isSubscriber = !!subscription.at(0);
-
-    if (!hasMembership && !isSubscriber) {
-      return <SubscriptionRequired />;
-    }
-    // If subscriber but not member, allow access; we'll pass flag below.
-  }
-
-  // Determine if the current viewer is a member to conditionally show "Recreate"
-  let isOwner = false;
-  if (user) {
-    try {
-      const membership = (
-        await db
-          .select()
-          .from(appUsers)
-          .where(and(eq(appUsers.userId, user.id), eq(appUsers.appId, id)))
-          .limit(1)
-      ).at(0);
-      isOwner = !!membership;
-    } catch {
-      // Not logged in; so not the owner
-      isOwner = false;
-    }
-  }
-
-  const showRecreate = app?.info?.is_recreatable && !isOwner;
-
-  let uiMessages: UIMessage[] = [];
-  try {
-    const result = await memory.query({
-      threadId: id,
-      resourceId: id,
-    });
-    uiMessages = result.uiMessages || [];
-  } catch (error) {
-    console.error("Error querying memory:", error);
-    uiMessages = [];
-  }
-
-  // Request dev server with a brief retry to avoid SSR crash right after recreation
-  let codeServerUrl = "";
-  let ephemeralUrl = "";
-  
-  if (app?.info?.gitRepo) {
-    async function sleep(ms: number) {
-      return new Promise((resolve) => setTimeout(resolve, ms));
-    }
-    
-    try {
-      const res = await freestyle.requestDevServer({ repoId: app.info.gitRepo });
-      codeServerUrl = res.codeServerUrl || "";
-      ephemeralUrl = res.ephemeralUrl || "";
-    } catch (e1) {
       try {
-        await sleep(1000);
-        const res2 = await freestyle.requestDevServer({ repoId: app.info.gitRepo });
-        codeServerUrl = res2.codeServerUrl || "";
-        ephemeralUrl = res2.ephemeralUrl || "";
-      } catch (e2) {
-        console.error("Dev server request failed twice for app", app?.info?.id, e2);
-        // Allow page to render; client WebView can recover/request later
-        codeServerUrl = "";
-        ephemeralUrl = "";
+        setAppLoading(true);
+        
+        // Fetch app data from API
+        const response = await fetch(`/api/apps/${id}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to load app");
+        }
+        
+        const appData = await response.json();
+        setApp(appData);
+
+        // Load UI messages
+        try {
+          const result = await memory.query({
+            threadId: id,
+            resourceId: id,
+          });
+          setUiMessages(result.uiMessages || []);
+        } catch (error) {
+          console.error("Error querying memory:", error);
+          setUiMessages([]);
+        }
+
+        // Request dev server
+        if (appData.gitRepo) {
+          try {
+            const res = await freestyle.requestDevServer({ repoId: appData.gitRepo });
+            setCodeServerUrl(res.codeServerUrl || "");
+            setEphemeralUrl(res.ephemeralUrl || "");
+          } catch (error) {
+            console.error("Dev server request failed:", error);
+            // Allow page to render; client WebView can recover/request later
+          }
+        }
+
+      } catch (error) {
+        console.error("Error loading app:", error);
+        setError(error instanceof Error ? error.message : "App not found or you don't have permission to access it");
+      } finally {
+        setAppLoading(false);
       }
-    }
+    };
+
+    loadApp();
+  }, [id, loading]);
+
+  // Show loading while auth is loading or app is loading
+  if (loading || appLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">
+            {loading ? "Checking authentication..." : "Loading app..."}
+          </p>
+        </div>
+      </div>
+    );
   }
 
-  console.log("requested dev server");
+  // Show error if app not found or no permission
+  if (error || !app) {
+    return (
+      <div className="text-center my-16">
+        <p className="text-lg font-semibold mb-4">
+          {error || "Project not found or you don't have permission to access it."}
+        </p>
+        <div className="flex justify-center mt-4">
+          <a href="/" className="px-4 py-2 bg-primary text-primary-foreground rounded-md">
+            Go back to home
+          </a>
+        </div>
+      </div>
+    );
+  }
 
-  // Use the previewDomain from the database, or fall back to a generated domain
-  const domain = app?.info?.previewDomain;
+  // Check if user has permission to access this app
+  const isOwner = user && app.userId === user.uid;
+  const isPublic = app.is_public;
+  
+  if (!isPublic && !isOwner) {
+    return (
+      <div className="text-center my-16">
+        <p className="text-lg font-semibold mb-4">
+          You don't have permission to access this project.
+        </p>
+        <div className="flex justify-center mt-4">
+          <a href="/" className="px-4 py-2 bg-primary text-primary-foreground rounded-md">
+            Go back to home
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  const showRecreate = app.is_recreatable && !isOwner;
 
   return (
     <AppWrapper
-      baseId={app?.info?.baseId || ""}
+      baseId={app.baseId || ""}
       codeServerUrl={codeServerUrl}
-      appName={app?.info?.name || ""}
+      appName={app.name || ""}
       initialMessages={uiMessages}
       consoleUrl={ephemeralUrl ? ephemeralUrl + "/__console" : ""}
-      repo={app?.info?.gitRepo || ""}
-      appId={app?.info?.id || ""}
-      repoId={app?.info?.gitRepo || ""}
-      domain={domain ?? undefined}
+      repo={app.gitRepo || ""}
+      appId={app.id || ""}
+      repoId={app.gitRepo || ""}
+      domain={app.previewDomain ?? undefined}
       running={false}
       showRecreate={showRecreate}
-      sourceAppId={app?.info?.id || ""}
-      isPublic={isEffectivelyPublic}
+      sourceAppId={app.id || ""}
+      isPublic={isPublic}
       isOwner={isOwner}
-      isRecreatable={app?.info?.is_recreatable || false}
-      isCrowdfunded={!!app?.info?.stripeProductId}
-      stripeProductId={app?.info?.stripeProductId ?? undefined}
-      requiresSubscription={app?.info?.requires_subscription || false}
-      isSubscriber={isSubscriber}
-      authToken={authToken?.token}
+      isRecreatable={app.is_recreatable || false}
+      isCrowdfunded={!!app.stripeProductId}
+      stripeProductId={app.stripeProductId ?? undefined}
+      requiresSubscription={app.requires_subscription || false}
+      isSubscriber={false} // TODO: Implement subscription logic
+      authToken={user ? "client-side-auth" : undefined}
       topBarActions={
-        showRecreate && app?.info?.id ? (
-          <RecreateButton sourceAppId={app?.info?.id} />
+        showRecreate && app.id ? (
+          <RecreateButton sourceAppId={app.id} />
         ) : null
       }
     />
-   );
-   } catch (error) {
-     console.error("Error in AppPage:", error);
-     return <ProjectNotFound />;
-   }
- }
-
-function ProjectNotFound() {
-  return (
-    <div className="text-center my-16">
-      Project not found or you don't have permission to access it.
-      <div className="flex justify-center mt-4">
-        <Link className={buttonVariants()} href="/">
-          Go back to home
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-function SubscriptionRequired() {
-  return (
-    <div className="text-center my-16">
-      You must be subscribed to access this app.
-      <div className="flex justify-center mt-4">
-        <Link className={buttonVariants()} href="/">
-          Go back to home
-        </Link>
-      </div>
-    </div>
   );
 }
