@@ -2,8 +2,7 @@
 
 import { appsTable, appUsers } from "@/db/schema";
 import { db } from "@/lib/db";
-import { doc, getDoc } from "firebase/firestore";
-import { db as firestoreDb } from "@/lib/firebaseClient";
+import { getFirebaseAdminFirestore } from "@/lib/firebase-admin";
 import { freestyleHelpers } from "@/lib/freestyle";
 import { getTemplate, templates } from "@/lib/templates";
 import { builderAgent } from "@/mastra/agents/builder";
@@ -36,8 +35,17 @@ export async function createApp({
       };
     }
 
-    const profileRef = doc(firestoreDb, "profiles", userId);
-    const profileSnap = await getDoc(profileRef);
+    // Use Firebase Admin SDK for server-side operations
+    const adminDb = getFirebaseAdminFirestore();
+    if (!adminDb) {
+      return {
+        success: false,
+        error: "Firebase Admin not available"
+      };
+    }
+    
+    const profileRef = adminDb.collection("profiles").doc(userId);
+    const profileSnap = await profileRef.get();
     const profile = profileSnap.data();
 
     if (!profile) {
