@@ -11,12 +11,19 @@ export async function POST(request: NextRequest) {
     // Try to import Firebase Admin dynamically to avoid build-time errors
     let auth;
     try {
-      const { auth: firebaseAuth } = await import("@/lib/firebase-admin");
-      auth = firebaseAuth;
+      const { auth: getFirebaseAuth } = await import("@/lib/firebase-admin");
+      auth = getFirebaseAuth();
     } catch (error) {
       console.error("Firebase Admin not available:", error);
       return NextResponse.json({ 
         error: "Authentication service temporarily unavailable",
+        fallback: true 
+      }, { status: 503 });
+    }
+
+    if (!auth) {
+      return NextResponse.json({ 
+        error: "Authentication service could not be initialized",
         fallback: true 
       }, { status: 503 });
     }
