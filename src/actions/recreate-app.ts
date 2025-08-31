@@ -7,6 +7,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db as firestoreDb } from "@/lib/firebaseClient";
 import { freestyle } from "@/lib/freestyle";
 import { eq } from "drizzle-orm";
+import { builderAgent } from "@/mastra/agents/builder";
 
 export async function recreateApp(sourceAppId: string) {
   const user = await getUser();

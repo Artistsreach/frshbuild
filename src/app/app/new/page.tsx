@@ -70,14 +70,18 @@ export default function NewAppRedirectPage() {
 
         console.log("Creating app with:", { message, template, userId: user.uid });
 
-        const { id } = await createApp({
+        const result = await createApp({
           initialMessage: message,
           templateId: template,
           userId: user.uid,
         });
 
-        console.log("App created successfully, redirecting to:", `/app/${id}`);
-        router.replace(`/app/${id}`);
+        if (!result.success) {
+          throw new Error(result.error || "Failed to create app");
+        }
+
+        console.log("App created successfully, redirecting to:", `/app/${result.appId}`);
+        router.replace(`/app/${result.appId}`);
       } catch (error) {
         console.error("Error creating app:", error);
         setIsCreating(false);
