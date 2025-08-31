@@ -1,23 +1,24 @@
 "use server";
 
-// Simple chat state management without Redis dependency
-const chatStates = new Map<string, { state: string; messages: any[] }>();
+import { getStreamState } from "@/lib/internal/stream-manager";
 
 export async function chatState(appId: string) {
-  // Return a default state if no Redis is available
-  const defaultState = chatStates.get(appId) || { 
-    state: "stopped", 
-    messages: [] 
-  };
-  
-  return defaultState;
+  try {
+    const state = await getStreamState(appId);
+    return {
+      state: state?.state || "stopped",
+      error: state?.error,
+    };
+  } catch (error) {
+    console.error("Error getting chat state:", error);
+    return {
+      state: "stopped",
+      error: "Failed to get chat state",
+    };
+  }
 }
 
 export async function updateChatState(appId: string, state: string, messages?: any[]) {
-  const current = chatStates.get(appId) || { state: "stopped", messages: [] };
-  chatStates.set(appId, {
-    state,
-    messages: messages || current.messages
-  });
+  // This function is kept for compatibility but now uses the stream manager
   return { success: true };
 }

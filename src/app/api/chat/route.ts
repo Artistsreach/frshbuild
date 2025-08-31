@@ -1,28 +1,29 @@
 import { getApp } from "@/actions/get-app";
 import { freestyle } from "@/lib/freestyle";
 import { getAppIdFromHeaders } from "@/lib/utils";
-import { MCPClient } from "@mastra/mcp";
-import { builderAgent } from "@/mastra/agents/builder";
 import { UIMessage } from "ai";
+import { builderAgent } from "@/mastra/agents/builder";
 
 // "fix" mastra mcp bug
 import { EventEmitter } from "events";
-import { getAbortCallback, setStream, stopStream } from "@/lib/streams";
+import {
+  isStreamRunning,
+  stopStream,
+  waitForStreamToStop,
+  clearStreamState,
+  sendMessageWithStreaming,
+} from "@/lib/internal/stream-manager";
 EventEmitter.defaultMaxListeners = 1000;
 
 import { NextRequest } from "next/server";
-import { redisPublisher } from "@/lib/redis";
-import { MessageList } from "@mastra/core/agent";
 import { getUser } from "@/auth/get-user";
 import { db } from "@/lib/db";
 import { appUsers } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db as firestoreDb } from "@/lib/firebaseClient";
-import { getFirebaseAdmin } from "@/lib/firebase-admin";
 
 export async function POST(req: NextRequest) {
-  getFirebaseAdmin();
   console.log("creating new chat stream");
   const appId = getAppIdFromHeaders(req);
 
@@ -40,49 +41,45 @@ export async function POST(req: NextRequest) {
     return new Response("User not found", { status: 401 });
   }
 
+  // Check if user has access to this app
+  const userApp = await db
+    .select()
+    .from(appUsers)
+    .where(and(eq(appUsers.appId, appId), eq(appUsers.userId, user.uid)))
+    .limit(1);
+
+  if (userApp.length === 0) {
+    return new Response("Access denied", { status: 403 });
+  }
+
+  // Check credits (simplified - you can enhance this)
   const profileRef = doc(firestoreDb, "profiles", user.uid);
   const profileSnap = await getDoc(profileRef);
   const profile = profileSnap.data();
 
   let credits = profile?.credits as number | undefined;
-
   if (credits === undefined) {
-    credits = 100;
+    credits = 100; // Default credits
   }
 
   if (credits < 10) {
     return new Response("Not enough credits", { status: 402 });
   }
 
+  // Deduct credits
   await updateDoc(profileRef, {
     credits: credits - 10,
   });
 
-  const streamState = await redisPublisher.get(
-    "app:" + appId + ":stream-state"
-  );
-
-  if (streamState === "running") {
+  // Check if a stream is already running and stop it if necessary
+  if (await isStreamRunning(appId)) {
     console.log("Stopping previous stream for appId:", appId);
-    stopStream(appId);
+    await stopStream(appId);
 
     // Wait until stream state is cleared
-    const maxAttempts = 60;
-    let attempts = 0;
-    while (attempts < maxAttempts) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const updatedState = await redisPublisher.get(
-        "app:" + appId + ":stream-state"
-      );
-      if (updatedState !== "running") {
-        break;
-      }
-      attempts++;
-    }
-
-    // If stream is still running after max attempts, return an error
-    if (attempts >= maxAttempts) {
-      await redisPublisher.del(`app:${appId}:stream-state`);
+    const stopped = await waitForStreamToStop(appId);
+    if (!stopped) {
+      await clearStreamState(appId);
       return new Response(
         "Previous stream is still shutting down, please try again",
         { status: 429 }
@@ -92,123 +89,31 @@ export async function POST(req: NextRequest) {
 
   const { messages }: { messages: UIMessage[] } = await req.json();
 
-  // If a previous run marked this thread to auto-resume, prepend a synthetic continue message
-  const needsResume = await redisPublisher.get(`app:${appId}:needs-resume`);
-  if (needsResume === "1") {
-    // Limit auto-resume loops
-    const attemptsRaw = await redisPublisher.get(`app:${appId}:resume-attempts`);
-    const attempts = attemptsRaw ? parseInt(attemptsRaw, 10) : 0;
-    if (attempts < 2) {
-      await redisPublisher.set(`app:${appId}:resume-attempts`, String(attempts + 1), { EX: 60 * 10 });
-      // Clear the flag so we don't chain endlessly
-      await redisPublisher.del(`app:${appId}:needs-resume`);
-      messages.push({
-        id: crypto.randomUUID(),
-        role: "user",
-        parts: [{ type: "text", text: "continue from where you left off. finish all remaining tasks and checklist items." }],
-      } as unknown as UIMessage);
-    } else {
-      // Give up auto-resume after attempts threshold
-      await redisPublisher.del(`app:${appId}:needs-resume`);
-    }
+  try {
+    const { mcpEphemeralUrl } = await freestyle.requestDevServer({
+      repoId: app.info.gitRepo,
+    });
+
+    const resumableStream = await sendMessageWithStreaming(
+      builderAgent,
+      appId,
+      mcpEphemeralUrl,
+      null, // fs parameter not needed for our setup
+      messages.at(-1)!
+    );
+
+    return resumableStream.response();
+  } catch (error) {
+    console.error("Error creating chat stream:", error);
+    
+    // Refund credits on error
+    await updateDoc(profileRef, {
+      credits: credits,
+    });
+    
+    return new Response(
+      "Failed to create chat stream: " + (error instanceof Error ? error.message : "Unknown error"),
+      { status: 500 }
+    );
   }
-
-  const { mcpEphemeralUrl } = await freestyle.requestDevServer({
-    repoId: app.info.gitRepo,
-  });
-
-  const resumableStream = await sendMessage(
-    appId,
-    mcpEphemeralUrl,
-    messages.at(-1)!
-  );
-
-  return resumableStream.response();
-}
-
-export async function sendMessage(
-  appId: string,
-  mcpUrl: string,
-  message: UIMessage
-) {
-  const mcp = new MCPClient({
-    id: crypto.randomUUID(),
-    servers: {
-      dev_server: {
-        url: new URL(mcpUrl),
-      },
-    },
-  });
-
-  const toolsets = await mcp.getToolsets();
-
-  const controller = new AbortController();
-  let shouldAbort = false;
-  await getAbortCallback(appId, () => {
-    shouldAbort = true;
-  });
-
-  let lastKeepAlive = Date.now();
-
-  const messageList = new MessageList({
-    resourceId: appId,
-    threadId: appId,
-  });
-
-  const stream = await builderAgent.stream([message], {
-    memory: {
-      thread: { id: appId },
-      resource: appId,
-    },
-    maxSteps: 200,
-    maxRetries: 2,
-    maxOutputTokens: 64000,
-    toolsets,
-    async onChunk() {
-      if (Date.now() - lastKeepAlive > 5000) {
-        lastKeepAlive = Date.now();
-        redisPublisher.set(`app:${appId}:stream-state`, "running", {
-          EX: 15,
-        });
-      }
-    },
-    async onStepFinish(step) {
-      messageList.add(step.response.messages, "response");
-
-      if (shouldAbort) {
-        await redisPublisher.del(`app:${appId}:stream-state`);
-        await redisPublisher.set(`app:${appId}:needs-resume`, "1", { EX: 60 * 10 });
-        controller.abort("Aborted stream after step finish");
-        const messages = messageList.drainUnsavedMessages();
-        console.log(messages);
-        const memory = await builderAgent.getMemory();
-        await memory?.saveMessages({
-          messages,
-        });
-      }
-    },
-    onError: async (error) => {
-      await mcp.disconnect();
-      await redisPublisher.del(`app:${appId}:stream-state`);
-      await redisPublisher.set(`app:${appId}:needs-resume`, "1", { EX: 60 * 10 });
-      console.error("Error:", error);
-    },
-    onFinish: async () => {
-      await redisPublisher.del(`app:${appId}:stream-state`);
-      // Mark for auto-resume if no explicit abort occurred and no recent resume attempt
-      if (!shouldAbort) {
-        const attemptsRaw = await redisPublisher.get(`app:${appId}:resume-attempts`);
-        const attempts = attemptsRaw ? parseInt(attemptsRaw, 10) : 0;
-        if (attempts < 2) {
-          await redisPublisher.set(`app:${appId}:needs-resume`, "1", { EX: 60 * 10 });
-        }
-      }
-      await mcp.disconnect();
-    },
-    abortSignal: controller.signal,
-  });
-
-  console.log("Stream created for appId:", appId, "with prompt:", message);
-
-  return await setStream(appId, message, stream as any);
 }
