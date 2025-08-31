@@ -17,7 +17,10 @@ function getFirebaseAdmin() {
     }
 
     try {
-      const serviceAccountJson = typeof serviceAccount === 'string' ? JSON.parse(serviceAccount) : serviceAccount;
+      const serviceAccountJson =
+        serviceAccount.trim().startsWith('{')
+          ? JSON.parse(serviceAccount)
+          : JSON.parse(Buffer.from(serviceAccount, 'base64').toString('utf-8'));
 
       // Replace \\n with \n in the private_key
       if (serviceAccountJson.private_key) {
