@@ -1,58 +1,84 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { createApp } from "@/actions/create-app";
-import { redirect } from "next/navigation";
-import { getUser } from "@/auth/get-user";
 
-// Force dynamic rendering to avoid static generation issues with cookies
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export default function NewAppRedirectPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, loading } = useAuth();
+  const [isCreating, setIsCreating] = useState(false);
 
-// This page is never rendered. It is used to:
-// - Force user login without losing the user's initial message and template selection.
-// - Force a loading page to be rendered (loading.tsx) while the app is being created.
-export default async function NewAppRedirectPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | string[] }>;
-  params: Promise<{ id: string }>;
-}) {
-  const search = await searchParams;
-  
-  try {
-    const user = await getUser();
-    console.log("User authentication check:", { user: user ? { uid: user.uid } : null });
-    
-    if (!user) {
-      // Redirect back to home page with the prompt and a sign-in message
-      const redirectUrl = `/?message=${encodeURIComponent(search.message as string || "")}&template=${search.template || "nextjs"}&signin=true`;
-      console.log("Redirecting to home with sign-in prompt:", redirectUrl);
-      redirect(redirectUrl);
-    }
+  useEffect(() => {
+    const handleAppCreation = async () => {
+      if (loading) return; // Wait for auth to load
 
-    // Extract message safely; do not double-decode here
-    const rawMessage = Array.isArray(search.message)
-      ? (search.message[0] as string | undefined)
-      : (search.message as string | undefined);
-    const message = rawMessage ?? undefined;
+      if (!user) {
+        // User is not authenticated, redirect to home with sign-in prompt
+        const message = searchParams.get("message") || "";
+        const template = searchParams.get("template") || "nextjs";
+        const redirectUrl = `/?message=${encodeURIComponent(message)}&template=${template}&signin=true`;
+        console.log("User not authenticated, redirecting to:", redirectUrl);
+        router.replace(redirectUrl);
+        return;
+      }
 
-    console.log("Creating app with:", { message, template: search.template, userId: user.uid });
+      if (isCreating) return; // Prevent multiple creations
+      setIsCreating(true);
 
-    const { id } = await createApp({
-      initialMessage: message,
-      templateId: (search.template as string) || "nextjs",
-    });
+      try {
+        // Extract message safely
+        const rawMessage = searchParams.get("message");
+        const message = rawMessage ?? undefined;
+        const template = searchParams.get("template") || "nextjs";
 
-    console.log("App created successfully, redirecting to:", `/app/${id}`);
-    redirect(`/app/${id}`);
-  } catch (error: any) {
-    console.error("Error in NewAppRedirectPage:", error);
-    
-    // Don't log NEXT_REDIRECT errors as they are expected
-    if (error.message === "NEXT_REDIRECT") {
-      throw error; // Re-throw NEXT_REDIRECT errors as they are handled by Next.js
-    }
-    
-    // If there's an error, redirect back to home page
-    const redirectUrl = `/?message=${encodeURIComponent(search.message as string || "")}&template=${search.template || "nextjs"}&error=true`;
-    redirect(redirectUrl);
+        console.log("Creating app with:", { message, template, userId: user.uid });
+
+        const { id } = await createApp({
+          initialMessage: message,
+          templateId: template,
+          userId: user.uid,
+        });
+
+        console.log("App created successfully, redirecting to:", `/app/${id}`);
+        router.replace(`/app/${id}`);
+      } catch (error) {
+        console.error("Error creating app:", error);
+        setIsCreating(false);
+        
+        // Redirect back to home page with error
+        const message = searchParams.get("message") || "";
+        const template = searchParams.get("template") || "nextjs";
+        const redirectUrl = `/?message=${encodeURIComponent(message)}&template=${template}&error=true`;
+        router.replace(redirectUrl);
+      }
+    };
+
+    handleAppCreation();
+  }, [user, loading, searchParams, router, isCreating]);
+
+  // Show loading while checking authentication or creating app
+  if (loading || isCreating) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">
+            {loading ? "Checking authentication..." : "Creating your app..."}
+          </p>
+        </div>
+      </div>
+    );
   }
+
+  // This should not be reached, but just in case
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center">
+        <p className="text-muted-foreground">Redirecting...</p>
+      </div>
+    </div>
+  );
 }

@@ -1,7 +1,6 @@
 "use server";
 
 import { sendMessage } from "@/app/api/chat/route";
-import { getUser } from "@/auth/get-user";
 import { appsTable, appUsers } from "@/db/schema";
 import { db } from "@/lib/db";
 import { doc, getDoc } from "firebase/firestore";
@@ -13,25 +12,24 @@ import { memory } from "@/mastra/agents/builder";
 export async function createApp({
   initialMessage,
   templateId,
+  userId,
 }: {
   initialMessage?: string;
   templateId: string;
+  userId: string;
 }) {
-  console.time("get user");
-  const user = await getUser();
-  console.timeEnd("get user");
-
-  if (!user) {
-    throw new Error("User not found");
-  }
-
-  const profileRef = doc(firestoreDb, "profiles", user.uid);
+  console.time("get user profile");
+  
+  // Get user profile from Firestore using the provided userId
+  const profileRef = doc(firestoreDb, "profiles", userId);
   const profileSnap = await getDoc(profileRef);
   const profile = profileSnap.data();
 
   if (!profile) {
     throw new Error("User profile not found");
   }
+
+  console.timeEnd("get user profile");
 
   if (!templates[templateId]) {
     throw new Error(
@@ -82,7 +80,7 @@ export async function createApp({
       .insert(appUsers)
       .values({
         appId: appInsertion[0].id,
-        userId: user.uid,
+        userId: userId,
         permissions: "admin",
         freestyleAccessToken: token.token,
         freestyleAccessTokenId: token.id,
