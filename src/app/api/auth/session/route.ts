@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
     response.cookies.set("session", sessionCookie, {
       maxAge: expiresIn,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: true,
+      sameSite: "none",
       path: "/",
     });
 
@@ -50,8 +50,8 @@ export async function DELETE() {
   response.cookies.set("session", "", {
     maxAge: 0,
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: true,
+    sameSite: "none",
     path: "/",
   });
   return response;
