@@ -38,8 +38,6 @@ export function MintNftModal({ appId, appName, gitRepo, projectId, frameworkName
   const [resolvedProjectId, setResolvedProjectId] = useState<string | null>(null);
   const effectiveProjectId = projectId || (process.env.NEXT_PUBLIC_MINTOLOGY_PROJECT_ID as string) || "";
 
-  console.log("MintNftModal rendered:", { appId, appName, open, step, frameworkName });
-
   function resolveFrameworkLogoUrl(framework?: string): string | undefined {
     if (!framework) return undefined;
     
@@ -99,8 +97,6 @@ export function MintNftModal({ appId, appName, gitRepo, projectId, frameworkName
         barCodeData: appId, // Use app ID as barcode data for uniqueness
         dateCreatedIso: new Date().toISOString(),
       };
-      
-      console.log("Bannerbear params:", bannerbearParams);
       
       const bb = await generateBannerbearImage(bannerbearParams);
       if (!bb.ok) {
@@ -215,15 +211,12 @@ export function MintNftModal({ appId, appName, gitRepo, projectId, frameworkName
 
   // Prepare premint when modal opens
   useEffect(() => {
-    console.log("Modal state changed:", { open, step, preparing });
     if (open && step === "prepare") {
-      console.log("Starting preparation...");
       preparePremint();
     }
   }, [open]);
 
   const handleOpenChange = (newOpen: boolean) => {
-    console.log("Dialog open change:", newOpen);
     setOpen(newOpen);
   };
 

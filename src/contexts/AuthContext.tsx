@@ -60,13 +60,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const identity = await freestyle.createGitIdentity();
                 console.log('FreestyleIdentity created:', identity.id);
                 
-                // Update profile with freestyleIdentity
-                await setDoc(profileRef, { 
-                  freestyleIdentity: identity.id 
-                }, { merge: true });
-                
-                console.log('Profile updated with freestyleIdentity');
-                // The profile will be updated via the onSnapshot listener
+                // Try to update profile with freestyleIdentity
+                try {
+                  await setDoc(profileRef, { 
+                    freestyleIdentity: identity.id 
+                  }, { merge: true });
+                  console.log('Profile updated with freestyleIdentity');
+                } catch (firestoreError) {
+                  console.error('Error updating profile with freestyleIdentity:', firestoreError);
+                  // Even if Firestore update fails, we can still use the identity
+                  // Update the local profile data
+                  profileData.freestyleIdentity = identity.id;
+                  console.log('Using freestyleIdentity locally:', identity.id);
+                }
               } catch (error) {
                 console.error('Error creating freestyleIdentity:', error);
                 // Continue without freestyleIdentity for now

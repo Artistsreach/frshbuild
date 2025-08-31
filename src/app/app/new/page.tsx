@@ -41,6 +41,7 @@ export default function NewAppRedirectPage() {
         return;
       }
 
+      // Check if we have a freestyleIdentity (either from Firestore or locally)
       if (!profile.freestyleIdentity) {
         // User doesn't have freestyleIdentity yet, show loading
         console.log("User doesn't have freestyleIdentity yet, waiting for it to be created...");
