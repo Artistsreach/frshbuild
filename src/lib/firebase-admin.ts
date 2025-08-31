@@ -17,7 +17,32 @@ function getFirebaseAdmin() {
     }
 
     try {
-      const serviceAccountJson = JSON.parse(serviceAccount);
+      let serviceAccountJson;
+      
+      // Try to parse as JSON first
+      try {
+        serviceAccountJson = JSON.parse(serviceAccount);
+      } catch (parseError) {
+        // If JSON parsing fails, try base64 decoding first
+        try {
+          const decoded = Buffer.from(serviceAccount, 'base64').toString('utf-8');
+          serviceAccountJson = JSON.parse(decoded);
+        } catch (base64Error) {
+          // If both fail, try to clean up the string (remove escape characters)
+          const cleaned = serviceAccount.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+          try {
+            serviceAccountJson = JSON.parse(cleaned);
+          } catch (cleanError) {
+            console.error("Firebase Admin: Failed to parse service account key in all formats:", {
+              parseError,
+              base64Error,
+              cleanError
+            });
+            throw new Error("Invalid Firebase service account key format");
+          }
+        }
+      }
+
       console.log("Firebase Admin: Initializing with project ID:", serviceAccountJson.project_id);
 
       initializeApp({

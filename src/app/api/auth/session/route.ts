@@ -21,6 +21,15 @@ export async function POST(request: NextRequest) {
       }, { status: 503 });
     }
 
+    // Check if auth is null (development mode without Firebase Admin)
+    if (!auth) {
+      console.warn("Firebase Admin auth is null, returning fallback response");
+      return NextResponse.json({ 
+        error: "Authentication service temporarily unavailable",
+        fallback: true 
+      }, { status: 503 });
+    }
+
     // Create session cookie
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
