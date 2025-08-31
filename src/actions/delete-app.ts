@@ -1,6 +1,6 @@
 "use server";
 
-import { getUser } from "@/auth/stack-auth";
+import { getUser } from "@/auth/get-user";
 import { appsTable, appUsers } from "@/db/schema";
 import { db } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
@@ -10,10 +10,15 @@ export async function deleteApp(appId: string) {
   const user = await getUser();
 
   // Check if user has permission to delete this app
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  // Check if user has permission to delete this app
   const userApp = await db
     .select()
     .from(appUsers)
-    .where(and(eq(appUsers.appId, appId), eq(appUsers.userId, user.userId)))
+    .where(and(eq(appUsers.appId, appId), eq(appUsers.userId, user.uid)))
     .limit(1)
     .then((apps) => apps.at(0));
 

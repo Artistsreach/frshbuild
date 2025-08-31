@@ -1,7 +1,9 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { stackServerApp } from "@/auth/stack-auth";
+import { getUser } from "@/auth/get-user";
+import { doc, updateDoc } from "firebase/firestore";
+import { db as firestoreDb } from "@/lib/firebaseClient";
 
 export async function GET(req: Request) {
   try {
@@ -64,20 +66,17 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "No access token in response" }, { status: 400 });
     }
 
-    const user = await stackServerApp.getUser();
+    const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const current = user.serverMetadata || {};
-    await user.update({
-      serverMetadata: {
-        ...current,
-        supabaseOAuth: {
-          access_token,
-          refresh_token,
-          token_type,
-          expires_in,
-          updated_at: new Date().toISOString(),
-        },
+    const profileRef = doc(firestoreDb, "profiles", user.uid);
+    await updateDoc(profileRef, {
+      supabaseOAuth: {
+        access_token,
+        refresh_token,
+        token_type,
+        expires_in,
+        updated_at: new Date().toISOString(),
       },
     });
 

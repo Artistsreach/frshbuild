@@ -1,13 +1,13 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import { stackServerApp } from "@/auth/stack-auth";
+import { cookies } from "next/headers";
 
 export async function POST() {
   try {
-    // Destroy the current session
-    await stackServerApp.destroySession();
-    
-    return NextResponse.json({ success: true });
+    // Clear the session cookie
+    const response = NextResponse.json({ success: true });
+    response.cookies.set("session", "", { expires: new Date(0) });
+    return response;
   } catch (error) {
     console.error("Sign out error:", error);
     return NextResponse.json({ error: "Failed to sign out" }, { status: 500 });

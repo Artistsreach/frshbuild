@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { stackServerApp } from "@/auth/stack-auth";
+import { getUser } from "@/auth/get-user";
+import { doc, getDoc } from "firebase/firestore";
+import { db as firestoreDb } from "@/lib/firebaseClient";
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await stackServerApp.getUser();
+    const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const accountId = user.serverMetadata?.stripeAccountId as string | undefined;
+    const profileRef = doc(firestoreDb, "profiles", user.uid);
+    const profileSnap = await getDoc(profileRef);
+    const profile = profileSnap.data();
+
+    const accountId = profile?.stripeAccountId as string | undefined;
     
     if (!accountId) {
       return NextResponse.json({ 

@@ -1,14 +1,28 @@
 "use server";
 
-import { getUser } from "@/auth/stack-auth";
+import { getUser } from "@/auth/get-user";
 import { appsTable, appUsers } from "@/db/schema";
 import { db } from "@/lib/db";
+import { doc, getDoc } from "firebase/firestore";
+import { db as firestoreDb } from "@/lib/firebaseClient";
 import { freestyle } from "@/lib/freestyle";
 import { eq } from "drizzle-orm";
 import { memory } from "@/mastra/agents/builder";
 
 export async function recreateApp(sourceAppId: string) {
   const user = await getUser();
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const profileRef = doc(firestoreDb, "profiles", user.uid);
+  const profileSnap = await getDoc(profileRef);
+  const profile = profileSnap.data();
+
+  if (!profile) {
+    throw new Error("User profile not found");
+  }
 
   // Load source app
   const source = (
@@ -29,13 +43,13 @@ export async function recreateApp(sourceAppId: string) {
   });
 
   await freestyle.grantGitPermission({
-    identityId: user.freestyleIdentity,
+    identityId: profile.freestyleIdentity,
     repoId: repo.repoId,
     permission: "write",
   });
 
   const token = await freestyle.createGitAccessToken({
-    identityId: user.freestyleIdentity,
+    identityId: profile.freestyleIdentity,
   });
 
   // Create new app and membership
@@ -54,11 +68,11 @@ export async function recreateApp(sourceAppId: string) {
 
     await tx.insert(appUsers).values({
       appId: inserted[0].id,
-      userId: user.userId,
+      userId: user.uid,
       permissions: "admin",
       freestyleAccessToken: token.token,
       freestyleAccessTokenId: token.id,
-      freestyleIdentity: user.freestyleIdentity,
+      freestyleIdentity: profile.freestyleIdentity,
     });
 
     return inserted[0];
