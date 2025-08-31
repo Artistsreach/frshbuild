@@ -13,6 +13,7 @@ interface UserProfile {
   createdAt: Date;
   displayName?: string;
   photoURL?: string;
+  freestyleIdentity?: string;
 }
 
 interface AuthContextType {
@@ -62,25 +63,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         profileUnsubscribe = onSnapshot(profileRef, async (profileSnap) => {
           if (profileSnap.exists()) {
             const profileData = { uid: currentUser.uid, ...profileSnap.data() } as UserProfile;
+            console.log('Profile loaded:', profileData);
             setProfile(profileData);
           } else {
             // Create profile if it doesn't exist
             try {
-              await setDoc(profileRef, {
+              console.log('Creating new profile for user:', currentUser.uid);
+              const newProfile = {
                 email: currentUser.email || '',
                 role: 'user',
                 createdAt: new Date(),
                 displayName: currentUser.displayName || undefined,
                 photoURL: currentUser.photoURL || undefined,
-              });
+                // Note: freestyleIdentity will be set later when user creates their first app
+              };
+              
+              await setDoc(profileRef, newProfile);
               setProfile({ 
                 uid: currentUser.uid, 
-                email: currentUser.email || '', 
-                role: 'user',
-                createdAt: new Date(),
-                displayName: currentUser.displayName || undefined,
-                photoURL: currentUser.photoURL || undefined,
+                ...newProfile
               });
+              console.log('Profile created successfully');
             } catch (error) {
               console.error('Error creating profile:', error);
               setProfile(null);

@@ -3,7 +3,7 @@
 import { sendMessage } from "@/app/api/chat/route";
 import { appsTable, appUsers } from "@/db/schema";
 import { db } from "@/lib/db";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db as firestoreDb } from "@/lib/firebaseClient";
 import { freestyle } from "@/lib/freestyle";
 import { templates } from "@/lib/templates";
@@ -23,10 +23,29 @@ export async function createApp({
   // Get user profile from Firestore using the provided userId
   const profileRef = doc(firestoreDb, "profiles", userId);
   const profileSnap = await getDoc(profileRef);
-  const profile = profileSnap.data();
+  let profile = profileSnap.data();
 
   if (!profile) {
     throw new Error("User profile not found");
+  }
+
+  // If user doesn't have a freestyleIdentity, create one
+  if (!profile.freestyleIdentity) {
+    console.log("Creating freestyleIdentity for user:", userId);
+    try {
+      const identity = await freestyle.createIdentity({
+        name: profile.displayName || profile.email || "User",
+        email: profile.email,
+      });
+      
+      // Update the profile with the new freestyleIdentity
+      await setDoc(profileRef, { freestyleIdentity: identity.identityId }, { merge: true });
+      profile = { ...profile, freestyleIdentity: identity.identityId };
+      console.log("FreestyleIdentity created:", identity.identityId);
+    } catch (error) {
+      console.error("Error creating freestyleIdentity:", error);
+      throw new Error("Failed to create user identity");
+    }
   }
 
   console.timeEnd("get user profile");

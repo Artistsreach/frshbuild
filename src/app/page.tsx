@@ -49,6 +49,7 @@ function HomePageContent() {
     submittedRef.current = true;
     setIsLoading(true);
 
+    // Only redirect to app creation if user is authenticated
     router.push(
       `/app/new?message=${encodeURIComponent(usedPrompt)}&template=${framework}`
     );

@@ -13,7 +13,16 @@ export default function NewAppRedirectPage() {
 
   useEffect(() => {
     const handleAppCreation = async () => {
-      if (loading) return; // Wait for auth to load
+      console.log("App creation flow started:", { 
+        loading, 
+        user: user ? { uid: user.uid, email: user.email } : null,
+        isCreating 
+      });
+
+      if (loading) {
+        console.log("Still loading auth state...");
+        return; // Wait for auth to load
+      }
 
       if (!user) {
         // User is not authenticated, redirect to home with sign-in prompt
@@ -25,7 +34,12 @@ export default function NewAppRedirectPage() {
         return;
       }
 
-      if (isCreating) return; // Prevent multiple creations
+      if (isCreating) {
+        console.log("Already creating app, skipping...");
+        return; // Prevent multiple creations
+      }
+
+      console.log("Starting app creation for user:", user.uid);
       setIsCreating(true);
 
       try {
@@ -52,6 +66,7 @@ export default function NewAppRedirectPage() {
         const message = searchParams.get("message") || "";
         const template = searchParams.get("template") || "nextjs";
         const redirectUrl = `/?message=${encodeURIComponent(message)}&template=${template}&error=true`;
+        console.log("Redirecting to home with error:", redirectUrl);
         router.replace(redirectUrl);
       }
     };
@@ -68,6 +83,16 @@ export default function NewAppRedirectPage() {
           <p className="mt-4 text-muted-foreground">
             {loading ? "Checking authentication..." : "Creating your app..."}
           </p>
+          {loading && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Please wait while we verify your authentication...
+            </p>
+          )}
+          {isCreating && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Setting up your development environment...
+            </p>
+          )}
         </div>
       </div>
     );
